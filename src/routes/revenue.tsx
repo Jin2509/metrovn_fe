@@ -15,7 +15,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { Download } from "lucide-react";
+import { ArrowRight, Download } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { DataTable, money, Section, StatCard } from "@/components/shared";
 import { ExportDialog } from "@/components/export-dialog";
@@ -99,7 +99,7 @@ function Page() {
           value={f.from}
           onChange={(e) => setF({ ...f, from: e.target.value })}
         />
-        <span>→</span>
+        <ArrowRight className="size-4 shrink-0" aria-hidden="true" />
         <Input
           type="date"
           className="w-40"

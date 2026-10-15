@@ -2,13 +2,17 @@ import { createFileRoute } from "@tanstack/react-router";
 import { ClientOnly } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useState } from "react";
 import {
+  ArrowDown,
+  ArrowLeft,
   ArrowUpDown,
+  Bus,
   Crosshair,
   Footprints,
   Bike,
   Car,
   TrainFront,
   MapPin,
+  LogOut,
   Search,
   Loader2,
   Plus,
@@ -153,7 +157,8 @@ function PointInput({
                 setRes([]);
               }}
             >
-              🚇 Ga {s.name}
+              <TrainFront className="mr-1 inline size-4" aria-hidden="true" />
+              Ga {s.name}
             </button>
           ))}
           {res.map((r, i) => (
@@ -165,7 +170,8 @@ function PointInput({
                 setRes([]);
               }}
             >
-              📍 {r.label}
+              <MapPin className="mr-1 inline size-4" aria-hidden="true" />
+              {r.label}
             </button>
           ))}
         </div>
@@ -284,20 +290,31 @@ function ExplorePage() {
             duration: w1.duration + metroTime + w2.duration,
             steps: [
               {
-                text: `🚶 Đi bộ tới ga ${sa.name} (${fmtTime(w1.duration)})`,
+                text: `Đi bộ tới ga ${sa.name} (${fmtTime(w1.duration)})`,
                 distance: w1.distance,
+                icon: Footprints,
               },
               ...w1.steps.slice(1, -1).map((s) => ({ ...s, text: `   ${s.text}` })),
               {
-                text: `🚇 Lên ${line.code} hướng ${seg[seg.length - 1].name}, đi ${seg.length - 1} ga`,
+                text: `Lên ${line.code} hướng ${seg[seg.length - 1].name}, đi ${seg.length - 1} ga`,
                 distance: metroDist,
+                icon: TrainFront,
               },
-              ...seg.slice(1, -1).map((s) => ({ text: `   · qua ga ${s.name}`, distance: 0 })),
-              {
-                text: `⬇️ Xuống ga ${sb.name}${stopsForStation(sb.id).length ? ` — buýt kết nối: ${[...new Set(stopsForStation(sb.id).flatMap((b) => b.routes))].join(", ")}` : ""}`,
+              ...seg.slice(1, -1).map((s) => ({
+                text: `   · qua ga ${s.name}`,
                 distance: 0,
+                icon: MapPin,
+              })),
+              {
+                text: `Xuống ga ${sb.name}${stopsForStation(sb.id).length ? ` — buýt kết nối: ${[...new Set(stopsForStation(sb.id).flatMap((b) => b.routes))].join(", ")}` : ""}`,
+                distance: 0,
+                icon: LogOut,
               },
-              { text: `🚶 Đi bộ tới điểm đến (${fmtTime(w2.duration)})`, distance: w2.distance },
+              {
+                text: `Đi bộ tới điểm đến (${fmtTime(w2.duration)})`,
+                distance: w2.distance,
+                icon: Footprints,
+              },
               ...w2.steps.slice(1).map((s) => ({ ...s, text: `   ${s.text}` })),
             ],
           });
@@ -454,7 +471,8 @@ function ExplorePage() {
                           setPois([]);
                         }}
                       >
-                        ← Danh sách
+                        <ArrowLeft className="mr-1 inline size-4" aria-hidden="true" />
+                        Danh sách
                       </Button>
                     </div>
                     <div className="flex gap-2">
@@ -487,7 +505,8 @@ function ExplorePage() {
                       ) : (
                         stopsForStation(sel.id).map((b) => (
                           <p key={b.id} className="text-sm">
-                            🚌 {b.name} ·{" "}
+                            <Bus className="mr-1 inline size-4" aria-hidden="true" />
+                            {b.name} ·{" "}
                             <span className="text-muted-foreground">
                               {b.routes.join(", ")} · {b.walkMinutes}′
                             </span>
@@ -500,18 +519,23 @@ function ExplorePage() {
                         Tiện ích trong bán kính 700 m
                       </p>
                       <div className="grid grid-cols-2 gap-1">
-                        {(Object.keys(poiCats) as PoiCat[]).map((c) => (
-                          <label key={c} className="flex items-center gap-2 text-xs">
-                            <Checkbox
-                              checked={filter.includes(c)}
-                              onCheckedChange={(v) =>
-                                setFilter((f) => (v ? [...f, c] : f.filter((x) => x !== c)))
-                              }
-                            />
-                            {poiCats[c].icon} {poiCats[c].label} (
-                            {pois.filter((p) => p.cat === c).length})
-                          </label>
-                        ))}
+                        {(Object.keys(poiCats) as PoiCat[]).map((c) =>
+                          (() => {
+                            const Icon = poiCats[c].icon;
+                            return (
+                              <label key={c} className="flex items-center gap-2 text-xs">
+                                <Checkbox
+                                  checked={filter.includes(c)}
+                                  onCheckedChange={(v) =>
+                                    setFilter((f) => (v ? [...f, c] : f.filter((x) => x !== c)))
+                                  }
+                                />
+                                <Icon className="size-4 shrink-0" aria-hidden="true" />
+                                {poiCats[c].label} ({pois.filter((p) => p.cat === c).length})
+                              </label>
+                            );
+                          })(),
+                        )}
                       </div>
                     </div>
                     {poiLoading ? (
@@ -521,34 +545,44 @@ function ExplorePage() {
                       </p>
                     ) : (
                       <div className="space-y-1">
-                        {shownPois.slice(0, 60).map((p) => (
-                          <div
-                            key={p.id}
-                            className="flex items-center justify-between rounded-md border px-2 py-1.5 text-sm"
-                          >
-                            <button
-                              className="text-left"
-                              onClick={() => setFocus({ lat: p.lat, lng: p.lng, zoom: 18 })}
-                            >
-                              {poiCats[p.cat].icon} {p.name}{" "}
-                              <span className="text-xs text-muted-foreground">
-                                · {fmtDist(p.d)}
-                              </span>
-                            </button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => {
-                                setOrigin({ lat: sel.lat, lng: sel.lng, label: `Ga ${sel.name}` });
-                                setDest({ lat: p.lat, lng: p.lng, label: p.name });
-                                setMode("foot");
-                                setTab("route");
-                              }}
-                            >
-                              Đường đi
-                            </Button>
-                          </div>
-                        ))}
+                        {shownPois.slice(0, 60).map((p) =>
+                          (() => {
+                            const Icon = poiCats[p.cat].icon;
+                            return (
+                              <div
+                                key={p.id}
+                                className="flex items-center justify-between rounded-md border px-2 py-1.5 text-sm"
+                              >
+                                <button
+                                  className="text-left"
+                                  onClick={() => setFocus({ lat: p.lat, lng: p.lng, zoom: 18 })}
+                                >
+                                  <Icon className="mr-1 inline size-4" aria-hidden="true" />
+                                  {p.name}{" "}
+                                  <span className="text-xs text-muted-foreground">
+                                    · {fmtDist(p.d)}
+                                  </span>
+                                </button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    setOrigin({
+                                      lat: sel.lat,
+                                      lng: sel.lng,
+                                      label: `Ga ${sel.name}`,
+                                    });
+                                    setDest({ lat: p.lat, lng: p.lng, label: p.name });
+                                    setMode("foot");
+                                    setTab("route");
+                                  }}
+                                >
+                                  Đường đi
+                                </Button>
+                              </div>
+                            );
+                          })(),
+                        )}
                         {shownPois.length === 0 && (
                           <p className="text-sm text-muted-foreground">
                             Không có tiện ích phù hợp.
@@ -637,19 +671,25 @@ function ExplorePage() {
                       <p className="text-sm text-muted-foreground">{fmtDist(summary.distance)}</p>
                     </div>
                     <ol className="space-y-1 text-sm">
-                      {summary.steps.map((s, i) => (
-                        <li
-                          key={i}
-                          className="flex justify-between gap-2 border-b py-1 last:border-0"
-                        >
-                          <span className="whitespace-pre-wrap">{s.text}</span>
-                          {s.distance > 0 && (
-                            <span className="shrink-0 text-xs text-muted-foreground">
-                              {fmtDist(s.distance)}
+                      {summary.steps.map((s, i) => {
+                        const Icon = s.icon;
+                        return (
+                          <li
+                            key={i}
+                            className="flex justify-between gap-2 border-b py-1 last:border-0"
+                          >
+                            <span className="flex min-w-0 items-start gap-2">
+                              <Icon className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+                              <span className="whitespace-pre-wrap">{s.text}</span>
                             </span>
-                          )}
-                        </li>
-                      ))}
+                            {s.distance > 0 && (
+                              <span className="shrink-0 text-xs text-muted-foreground">
+                                {fmtDist(s.distance)}
+                              </span>
+                            )}
+                          </li>
+                        );
+                      })}
                     </ol>
                   </div>
                 )}

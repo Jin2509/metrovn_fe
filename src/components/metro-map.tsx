@@ -1,4 +1,5 @@
 import "leaflet/dist/leaflet.css";
+import { Bus } from "lucide-react";
 import {
   CircleMarker,
   MapContainer,
@@ -91,7 +92,10 @@ export default function MetroMap({
               pathOptions={{ color: busColor, fillColor: busColor, fillOpacity: 1 }}
             >
               <Popup>
-                <strong>🚌 {b.name}</strong>
+                <strong>
+                  <Bus className="mr-1 inline size-4" aria-hidden="true" />
+                  {b.name}
+                </strong>
                 <br />
                 Tuyến: {b.routes.join(", ")}
                 <br />

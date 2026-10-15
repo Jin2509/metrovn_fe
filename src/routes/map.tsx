@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Sparkles } from "lucide-react";
+import { Bus, Sparkles } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { LazyMap } from "@/components/lazy-map";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -82,7 +82,10 @@ function MapPage() {
                   </p>
                   {stopsForStation(st.id).map((b) => (
                     <div key={b.id} className="rounded-lg bg-muted p-2">
-                      <p className="font-medium">🚌 {b.name}</p>
+                      <p className="flex items-center gap-1 font-medium">
+                        <Bus className="size-4" aria-hidden="true" />
+                        {b.name}
+                      </p>
                       <p className="text-xs text-muted-foreground">
                         {b.walkMinutes} phút đi bộ · tuyến {b.routes.join(", ")}
                       </p>

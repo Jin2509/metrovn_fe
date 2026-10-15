@@ -1,7 +1,22 @@
+import {
+  Bike,
+  Bus,
+  Car,
+  Footprints,
+  Hospital,
+  Landmark,
+  Pill,
+  School,
+  Store,
+  TrainFront,
+  Utensils,
+  type LucideIcon,
+} from "lucide-react";
+
 // Dịch vụ bản đồ mở (không cần khóa): Nominatim (tìm địa điểm), OSRM (chỉ đường), Overpass (tiện ích quanh ga).
 export type Pt = { lat: number; lng: number; label: string };
 export type Mode = "foot" | "bike" | "car";
-export type Step = { text: string; distance: number };
+export type Step = { text: string; distance: number; icon: LucideIcon };
 export type RouteResult = {
   coords: [number, number][];
   distance: number;
@@ -72,40 +87,54 @@ export async function route(a: Pt, b: Pt, mode: Mode): Promise<RouteResult> {
       (s: { maneuver: { type: string; modifier?: string }; name: string; distance: number }) => ({
         text: stepText(s.maneuver, s.name),
         distance: s.distance,
+        icon: { foot: Footprints, bike: Bike, car: Car }[mode],
       }),
     ),
   };
 }
 
 export type PoiCat = "bus" | "shop" | "hospital" | "school" | "food" | "bank" | "pharmacy";
-export const poiCats: Record<PoiCat, { label: string; icon: string; color: string; q: string }> = {
-  bus: { label: "Trạm xe buýt", icon: "🚌", color: "#2f9e44", q: 'node["highway"="bus_stop"]' },
+export const poiCats: Record<
+  PoiCat,
+  { label: string; icon: LucideIcon; color: string; q: string }
+> = {
+  bus: { label: "Trạm xe buýt", icon: Bus, color: "#2f9e44", q: 'node["highway"="bus_stop"]' },
   shop: {
     label: "Cửa hàng",
-    icon: "🛍️",
+    icon: Store,
     color: "#7048e8",
     q: 'node["shop"~"convenience|supermarket|mall|department_store"]',
   },
   hospital: {
     label: "Bệnh viện / phòng khám",
-    icon: "🏥",
+    icon: Hospital,
     color: "#e03131",
     q: 'nwr["amenity"~"hospital|clinic"]',
   },
   school: {
     label: "Trường học",
-    icon: "🏫",
+    icon: School,
     color: "#1971c2",
     q: 'nwr["amenity"~"school|university|college"]',
   },
   food: {
     label: "Ăn uống",
-    icon: "🍜",
+    icon: Utensils,
     color: "#f08c00",
     q: 'node["amenity"~"restaurant|cafe|fast_food"]',
   },
-  bank: { label: "Ngân hàng / ATM", icon: "🏦", color: "#0c8599", q: 'node["amenity"~"bank|atm"]' },
-  pharmacy: { label: "Nhà thuốc", icon: "💊", color: "#c2255c", q: 'node["amenity"="pharmacy"]' },
+  bank: {
+    label: "Ngân hàng / ATM",
+    icon: Landmark,
+    color: "#0c8599",
+    q: 'node["amenity"~"bank|atm"]',
+  },
+  pharmacy: {
+    label: "Nhà thuốc",
+    icon: Pill,
+    color: "#c2255c",
+    q: 'node["amenity"="pharmacy"]',
+  },
 };
 export type Poi = { id: string; cat: PoiCat; name: string; lat: number; lng: number };
 

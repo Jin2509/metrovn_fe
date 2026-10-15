@@ -1,4 +1,5 @@
 import "leaflet/dist/leaflet.css";
+import { Bus } from "lucide-react";
 import {
   CircleMarker,
   MapContainer,
@@ -107,7 +108,10 @@ export default function ExplorerMap({
           pathOptions={{ color: "#2f9e44", fillColor: "#2f9e44", fillOpacity: 1 }}
         >
           <Popup>
-            <strong>🚌 {b.name}</strong>
+            <strong>
+              <Bus className="mr-1 inline size-4" aria-hidden="true" />
+              {b.name}
+            </strong>
             <br />
             Tuyến: {b.routes.join(", ")}
             <br />
@@ -117,37 +121,42 @@ export default function ExplorerMap({
       ))}
       {pois
         .filter((p) => poiFilter.includes(p.cat))
-        .map((p) => (
-          <CircleMarker
-            key={p.id}
-            center={[p.lat, p.lng]}
-            radius={6}
-            pathOptions={{
-              color: "#fff",
-              weight: 2,
-              fillColor: poiCats[p.cat].color,
-              fillOpacity: 0.95,
-            }}
-          >
-            <Tooltip>
-              {poiCats[p.cat].icon} {p.name}
-            </Tooltip>
-            <Popup>
-              <strong>
-                {poiCats[p.cat].icon} {p.name}
-              </strong>
-              <br />
-              {poiCats[p.cat].label}
-              <br />
-              <button
-                style={{ marginTop: 6, textDecoration: "underline" }}
-                onClick={() => onPoiRoute?.(p)}
-              >
-                Chỉ đường tới đây
-              </button>
-            </Popup>
-          </CircleMarker>
-        ))}
+        .map((p) => {
+          const Icon = poiCats[p.cat].icon;
+          return (
+            <CircleMarker
+              key={p.id}
+              center={[p.lat, p.lng]}
+              radius={6}
+              pathOptions={{
+                color: "#fff",
+                weight: 2,
+                fillColor: poiCats[p.cat].color,
+                fillOpacity: 0.95,
+              }}
+            >
+              <Tooltip>
+                <Icon className="mr-1 inline size-4" aria-hidden="true" />
+                {p.name}
+              </Tooltip>
+              <Popup>
+                <strong>
+                  <Icon className="mr-1 inline size-4" aria-hidden="true" />
+                  {p.name}
+                </strong>
+                <br />
+                {poiCats[p.cat].label}
+                <br />
+                <button
+                  style={{ marginTop: 6, textDecoration: "underline" }}
+                  onClick={() => onPoiRoute?.(p)}
+                >
+                  Chỉ đường tới đây
+                </button>
+              </Popup>
+            </CircleMarker>
+          );
+        })}
       {stations
         .filter((s) => s.lineIds.length)
         .map((s) => {

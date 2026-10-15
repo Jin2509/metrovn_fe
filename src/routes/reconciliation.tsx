@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
+import { ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { money, Section, StatusBadge } from "@/components/shared";
@@ -70,7 +71,7 @@ function Page() {
               value={from}
               onChange={(e) => setFrom(e.target.value)}
             />
-            <span>→</span>
+            <ArrowRight className="size-4 shrink-0" aria-hidden="true" />
             <Input
               type="date"
               className="h-9 w-40"

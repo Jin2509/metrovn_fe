@@ -160,7 +160,7 @@ export function AppShell({
                 >
                   <n.icon className="h-4 w-4" />
                   <span className="flex-1">{n.label}</span>
-                  {n.to === "/phe-duyet" && pending > 0 && (
+                  {n.to === "/approvals" && pending > 0 && (
                     <span className="rounded-full bg-accent px-1.5 text-xs text-accent-foreground">
                       {pending}
                     </span>
