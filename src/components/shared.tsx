@@ -1,7 +1,8 @@
 import { useState, type ReactNode } from "react";
+import type { LucideIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -46,21 +47,45 @@ export function StatusBadge({ s, label }: { s: string; label?: string }) {
   );
 }
 
+const statTones = {
+  primary: "bg-primary/10 text-primary",
+  accent: "bg-accent/15 text-accent-foreground",
+  success: "bg-success/12 text-success",
+  destructive: "bg-destructive/10 text-destructive",
+  muted: "bg-muted text-muted-foreground",
+} as const;
+
 export function StatCard({
   label,
   value,
   hint,
+  icon: Icon,
+  tone = "primary",
 }: {
   label: string;
   value: ReactNode;
   hint?: string;
+  icon?: LucideIcon;
+  tone?: keyof typeof statTones;
 }) {
   return (
     <Card>
-      <CardContent className="p-5">
-        <p className="text-sm text-muted-foreground">{label}</p>
-        <p className="mt-1 text-2xl font-bold">{value}</p>
-        {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+      <CardContent className="flex items-start gap-4 p-5">
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium text-muted-foreground">{label}</p>
+          <p className="mt-1.5 truncate text-2xl font-semibold tracking-tight">{value}</p>
+          {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
+        </div>
+        {Icon && (
+          <div
+            className={cn(
+              "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg",
+              statTones[tone],
+            )}
+          >
+            <Icon className="h-5 w-5" />
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -68,20 +93,27 @@ export function StatCard({
 
 export function Section({
   title,
+  description,
   action,
   children,
+  className,
 }: {
   title: string;
+  description?: string;
   action?: ReactNode;
   children: ReactNode;
+  className?: string;
 }) {
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
-        <CardTitle className="text-base">{title}</CardTitle>
-        {action}
+    <Card className={className}>
+      <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 space-y-0 border-b px-5 py-4">
+        <div className="min-w-0 space-y-1">
+          <CardTitle className="text-base">{title}</CardTitle>
+          {description && <CardDescription>{description}</CardDescription>}
+        </div>
+        {action && <div className="flex flex-wrap items-center gap-2">{action}</div>}
       </CardHeader>
-      <CardContent>{children}</CardContent>
+      <CardContent className="p-5">{children}</CardContent>
     </Card>
   );
 }
@@ -106,12 +138,15 @@ export function DataTable<T>({
   const view = rows.slice(p * pageSize, (p + 1) * pageSize);
   return (
     <div>
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto rounded-lg border">
         <Table>
-          <TableHeader>
-            <TableRow>
+          <TableHeader className="bg-muted/60">
+            <TableRow className="hover:bg-transparent">
               {cols.map((c) => (
-                <TableHead key={c.h} className={c.className}>
+                <TableHead
+                  key={c.h}
+                  className={cn("h-10 text-xs font-semibold uppercase tracking-wide", c.className)}
+                >
                   {c.h}
                 </TableHead>
               ))}
@@ -132,7 +167,7 @@ export function DataTable<T>({
               <TableRow
                 key={i}
                 onClick={onRow ? () => onRow(r) : undefined}
-                className={onRow ? "cursor-pointer" : ""}
+                className={cn(onRow && "cursor-pointer")}
               >
                 {cols.map((c) => (
                   <TableCell key={c.h} className={c.className}>

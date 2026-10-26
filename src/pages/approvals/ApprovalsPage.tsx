@@ -1,11 +1,13 @@
-import { AppShell } from "@/components/app-shell";
+import { FileCheck2, Inbox } from "lucide-react";
+import { AppShell, PageTabs } from "@/components/app-shell";
+import { PoliciesPanel } from "@/pages/policies";
 import { ReasonDialog } from "@/components/shared";
 import { ApprovalDetailSheet } from "@/pages/approvals/components/ApprovalDetailSheet";
 import { ApprovalListSection } from "@/pages/approvals/components/ApprovalListSection";
 import { ApprovalTypeTabs } from "@/pages/approvals/components/ApprovalTypeTabs";
 import { useApprovals } from "@/pages/approvals/hooks/useApprovals";
 
-export function ApprovalsPage() {
+function ApprovalInboxPanel() {
   const {
     rows,
     tab,
@@ -20,7 +22,7 @@ export function ApprovalsPage() {
   } = useApprovals();
 
   return (
-    <AppShell title="Hộp phê duyệt" roles={["MANAGER"]}>
+    <>
       <ApprovalTypeTabs value={tab} onValueChange={setTab} />
       <ApprovalListSection
         rows={rows}
@@ -40,6 +42,24 @@ export function ApprovalsPage() {
         confirmLabel="Từ chối"
         onClose={() => setRejectOpen(false)}
         onConfirm={(reason) => decide("REJECTED", reason)}
+      />
+    </>
+  );
+}
+
+export function ApprovalsPage() {
+  return (
+    <AppShell title="Phê duyệt & chính sách">
+      <PageTabs
+        tabs={[
+          { value: "inbox", label: "Hộp phê duyệt", icon: Inbox, content: <ApprovalInboxPanel /> },
+          {
+            value: "policies",
+            label: "Chính sách đang áp dụng",
+            icon: FileCheck2,
+            content: <PoliciesPanel />,
+          },
+        ]}
       />
     </AppShell>
   );

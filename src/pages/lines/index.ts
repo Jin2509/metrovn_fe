@@ -1,1 +1,1 @@
-export { LinesPage } from "@/pages/lines/LinesPage";
+export { LinesPanel } from "@/pages/lines/LinesPanel";

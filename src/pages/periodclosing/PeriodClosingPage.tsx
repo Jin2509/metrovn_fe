@@ -14,7 +14,7 @@ export function PeriodClosingPage() {
   } = usePeriodClosing();
 
   return (
-    <AppShell title="Chốt kỳ / quyết toán" roles={["ACCOUNTANT"]}>
+    <AppShell title="Chốt kỳ / quyết toán">
       <PeriodSummaryTable periods={periods} onSelectPeriod={selectMonth} />
       <PeriodCloseDialog
         month={selectedMonth}

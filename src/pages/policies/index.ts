@@ -1,1 +1,1 @@
-export { PoliciesPage } from "@/pages/policies/PoliciesPage";
+export { PoliciesPanel } from "@/pages/policies/PoliciesPanel";

@@ -1,4 +1,5 @@
 import { DataTable, Section } from "@/components/shared";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type {
   MembershipTier,
@@ -8,12 +9,18 @@ import type {
 export function MembershipTierTable({
   tiers,
   onTierChange,
+  onSave,
 }: {
   tiers: MembershipTier[];
   onTierChange: (change: MembershipTierChange) => void;
+  onSave: () => void;
 }) {
   return (
-    <Section title="Cấu hình hạng">
+    <Section
+      title="Cấu hình hạng"
+      description="Ngưỡng điểm và quyền lợi của từng hạng thành viên"
+      action={<Button onClick={onSave}>Lưu thay đổi</Button>}
+    >
       <DataTable
         rows={tiers}
         cols={[

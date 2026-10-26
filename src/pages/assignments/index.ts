@@ -1,1 +1,1 @@
-export { AssignmentsPage } from "@/pages/assignments/AssignmentsPage";
+export { AssignmentsPanel } from "@/pages/assignments/AssignmentsPanel";

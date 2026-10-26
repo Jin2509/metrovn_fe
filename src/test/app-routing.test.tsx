@@ -16,6 +16,12 @@ describe("App routing", () => {
     expect(matches.at(-1)?.routeId).not.toBe(rootRouteId);
   });
 
+  it("matches the public login route", () => {
+    const router = createRouter({ routeTree, context: { queryClient: new QueryClient() } });
+
+    expect(router.matchRoutes("/login").at(-1)?.routeId).toBe("/login");
+  });
+
   it("matches a registered route for every sidebar destination", () => {
     const router = createRouter({ routeTree, context: { queryClient: new QueryClient() } });
     const destinations = navGroups.flatMap((group) => group.items.map((item) => item.to));

@@ -1,4 +1,5 @@
-import { currentUser, logAction, periodsStore, roleStore, txnStore, type Txn } from "@/mocks/admin";
+import { getActorName } from "@/lib/auth/session.store";
+import { logAction, periodsStore, txnStore, type Txn } from "@/mocks/admin";
 import type { Period } from "@/pages/reconciliation/reconciliation.types";
 
 export function filterReconciliationRows(
@@ -29,7 +30,7 @@ export function calculateSelectedAmount(rows: Txn[], picked: Set<string>) {
 }
 
 export function reconcileTransactions(picked: Set<string>) {
-  const reconciledBy = `${currentUser(roleStore.get())} · ${new Date().toLocaleString("vi-VN")}`;
+  const reconciledBy = `${getActorName()} · ${new Date().toLocaleString("vi-VN")}`;
   txnStore.set((transactions) =>
     transactions.map((transaction) =>
       picked.has(transaction.id) ? { ...transaction, reconciled: true, reconciledBy } : transaction,

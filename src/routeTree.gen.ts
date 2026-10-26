@@ -11,21 +11,14 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApprovalsRouteImport } from './routes/approvals'
-import { Route as AssignmentsRouteImport } from './routes/assignments'
 import { Route as AuditLogsRouteImport } from './routes/audit-logs'
-import { Route as BusesRouteImport } from './routes/buses'
-import { Route as LinesRouteImport } from './routes/lines'
-import { Route as LookupRouteImport } from './routes/lookup'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as MapRouteImport } from './routes/map'
-import { Route as MembershipTiersRouteImport } from './routes/membership-tiers'
 import { Route as NotificationsRouteImport } from './routes/notifications'
-import { Route as ParkingRouteImport } from './routes/parking'
-import { Route as PassengerFlowRouteImport } from './routes/passenger-flow'
 import { Route as PeriodClosingRouteImport } from './routes/period-closing'
-import { Route as PoliciesRouteImport } from './routes/policies'
 import { Route as PromotionsRouteImport } from './routes/promotions'
-import { Route as ReconciliationRouteImport } from './routes/reconciliation'
 import { Route as RevenueRouteImport } from './routes/revenue'
+import { Route as StationStatsRouteImport } from './routes/station-stats'
 import { Route as StationsRouteImport } from './routes/stations'
 import { Route as TicketsRouteImport } from './routes/tickets'
 import { Route as TrainsRouteImport } from './routes/trains'
@@ -42,29 +35,14 @@ const ApprovalsRoute = ApprovalsRouteImport.update({
   path: '/approvals',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AssignmentsRoute = AssignmentsRouteImport.update({
-  id: '/assignments',
-  path: '/assignments',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AuditLogsRoute = AuditLogsRouteImport.update({
   id: '/audit-logs',
   path: '/audit-logs',
   getParentRoute: () => rootRouteImport,
 } as any)
-const BusesRoute = BusesRouteImport.update({
-  id: '/buses',
-  path: '/buses',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LinesRoute = LinesRouteImport.update({
-  id: '/lines',
-  path: '/lines',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LookupRoute = LookupRouteImport.update({
-  id: '/lookup',
-  path: '/lookup',
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MapRoute = MapRouteImport.update({
@@ -72,24 +50,9 @@ const MapRoute = MapRouteImport.update({
   path: '/map',
   getParentRoute: () => rootRouteImport,
 } as any)
-const MembershipTiersRoute = MembershipTiersRouteImport.update({
-  id: '/membership-tiers',
-  path: '/membership-tiers',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const NotificationsRoute = NotificationsRouteImport.update({
   id: '/notifications',
   path: '/notifications',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ParkingRoute = ParkingRouteImport.update({
-  id: '/parking',
-  path: '/parking',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PassengerFlowRoute = PassengerFlowRouteImport.update({
-  id: '/passenger-flow',
-  path: '/passenger-flow',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PeriodClosingRoute = PeriodClosingRouteImport.update({
@@ -97,24 +60,19 @@ const PeriodClosingRoute = PeriodClosingRouteImport.update({
   path: '/period-closing',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PoliciesRoute = PoliciesRouteImport.update({
-  id: '/policies',
-  path: '/policies',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const PromotionsRoute = PromotionsRouteImport.update({
   id: '/promotions',
   path: '/promotions',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ReconciliationRoute = ReconciliationRouteImport.update({
-  id: '/reconciliation',
-  path: '/reconciliation',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const RevenueRoute = RevenueRouteImport.update({
   id: '/revenue',
   path: '/revenue',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StationStatsRoute = StationStatsRouteImport.update({
+  id: '/station-stats',
+  path: '/station-stats',
   getParentRoute: () => rootRouteImport,
 } as any)
 const StationsRoute = StationsRouteImport.update({
@@ -146,21 +104,14 @@ const UsersRoute = UsersRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/approvals': typeof ApprovalsRoute
-  '/assignments': typeof AssignmentsRoute
   '/audit-logs': typeof AuditLogsRoute
-  '/buses': typeof BusesRoute
-  '/lines': typeof LinesRoute
-  '/lookup': typeof LookupRoute
+  '/login': typeof LoginRoute
   '/map': typeof MapRoute
-  '/membership-tiers': typeof MembershipTiersRoute
   '/notifications': typeof NotificationsRoute
-  '/parking': typeof ParkingRoute
-  '/passenger-flow': typeof PassengerFlowRoute
   '/period-closing': typeof PeriodClosingRoute
-  '/policies': typeof PoliciesRoute
   '/promotions': typeof PromotionsRoute
-  '/reconciliation': typeof ReconciliationRoute
   '/revenue': typeof RevenueRoute
+  '/station-stats': typeof StationStatsRoute
   '/stations': typeof StationsRoute
   '/tickets': typeof TicketsRoute
   '/trains': typeof TrainsRoute
@@ -170,21 +121,14 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/approvals': typeof ApprovalsRoute
-  '/assignments': typeof AssignmentsRoute
   '/audit-logs': typeof AuditLogsRoute
-  '/buses': typeof BusesRoute
-  '/lines': typeof LinesRoute
-  '/lookup': typeof LookupRoute
+  '/login': typeof LoginRoute
   '/map': typeof MapRoute
-  '/membership-tiers': typeof MembershipTiersRoute
   '/notifications': typeof NotificationsRoute
-  '/parking': typeof ParkingRoute
-  '/passenger-flow': typeof PassengerFlowRoute
   '/period-closing': typeof PeriodClosingRoute
-  '/policies': typeof PoliciesRoute
   '/promotions': typeof PromotionsRoute
-  '/reconciliation': typeof ReconciliationRoute
   '/revenue': typeof RevenueRoute
+  '/station-stats': typeof StationStatsRoute
   '/stations': typeof StationsRoute
   '/tickets': typeof TicketsRoute
   '/trains': typeof TrainsRoute
@@ -195,21 +139,14 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/approvals': typeof ApprovalsRoute
-  '/assignments': typeof AssignmentsRoute
   '/audit-logs': typeof AuditLogsRoute
-  '/buses': typeof BusesRoute
-  '/lines': typeof LinesRoute
-  '/lookup': typeof LookupRoute
+  '/login': typeof LoginRoute
   '/map': typeof MapRoute
-  '/membership-tiers': typeof MembershipTiersRoute
   '/notifications': typeof NotificationsRoute
-  '/parking': typeof ParkingRoute
-  '/passenger-flow': typeof PassengerFlowRoute
   '/period-closing': typeof PeriodClosingRoute
-  '/policies': typeof PoliciesRoute
   '/promotions': typeof PromotionsRoute
-  '/reconciliation': typeof ReconciliationRoute
   '/revenue': typeof RevenueRoute
+  '/station-stats': typeof StationStatsRoute
   '/stations': typeof StationsRoute
   '/tickets': typeof TicketsRoute
   '/trains': typeof TrainsRoute
@@ -221,21 +158,14 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/approvals'
-    | '/assignments'
     | '/audit-logs'
-    | '/buses'
-    | '/lines'
-    | '/lookup'
+    | '/login'
     | '/map'
-    | '/membership-tiers'
     | '/notifications'
-    | '/parking'
-    | '/passenger-flow'
     | '/period-closing'
-    | '/policies'
     | '/promotions'
-    | '/reconciliation'
     | '/revenue'
+    | '/station-stats'
     | '/stations'
     | '/tickets'
     | '/trains'
@@ -245,21 +175,14 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/approvals'
-    | '/assignments'
     | '/audit-logs'
-    | '/buses'
-    | '/lines'
-    | '/lookup'
+    | '/login'
     | '/map'
-    | '/membership-tiers'
     | '/notifications'
-    | '/parking'
-    | '/passenger-flow'
     | '/period-closing'
-    | '/policies'
     | '/promotions'
-    | '/reconciliation'
     | '/revenue'
+    | '/station-stats'
     | '/stations'
     | '/tickets'
     | '/trains'
@@ -269,21 +192,14 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/approvals'
-    | '/assignments'
     | '/audit-logs'
-    | '/buses'
-    | '/lines'
-    | '/lookup'
+    | '/login'
     | '/map'
-    | '/membership-tiers'
     | '/notifications'
-    | '/parking'
-    | '/passenger-flow'
     | '/period-closing'
-    | '/policies'
     | '/promotions'
-    | '/reconciliation'
     | '/revenue'
+    | '/station-stats'
     | '/stations'
     | '/tickets'
     | '/trains'
@@ -294,21 +210,14 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ApprovalsRoute: typeof ApprovalsRoute
-  AssignmentsRoute: typeof AssignmentsRoute
   AuditLogsRoute: typeof AuditLogsRoute
-  BusesRoute: typeof BusesRoute
-  LinesRoute: typeof LinesRoute
-  LookupRoute: typeof LookupRoute
+  LoginRoute: typeof LoginRoute
   MapRoute: typeof MapRoute
-  MembershipTiersRoute: typeof MembershipTiersRoute
   NotificationsRoute: typeof NotificationsRoute
-  ParkingRoute: typeof ParkingRoute
-  PassengerFlowRoute: typeof PassengerFlowRoute
   PeriodClosingRoute: typeof PeriodClosingRoute
-  PoliciesRoute: typeof PoliciesRoute
   PromotionsRoute: typeof PromotionsRoute
-  ReconciliationRoute: typeof ReconciliationRoute
   RevenueRoute: typeof RevenueRoute
+  StationStatsRoute: typeof StationStatsRoute
   StationsRoute: typeof StationsRoute
   TicketsRoute: typeof TicketsRoute
   TrainsRoute: typeof TrainsRoute
@@ -332,13 +241,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApprovalsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/assignments': {
-      id: '/assignments'
-      path: '/assignments'
-      fullPath: '/assignments'
-      preLoaderRoute: typeof AssignmentsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/audit-logs': {
       id: '/audit-logs'
       path: '/audit-logs'
@@ -346,25 +248,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuditLogsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/buses': {
-      id: '/buses'
-      path: '/buses'
-      fullPath: '/buses'
-      preLoaderRoute: typeof BusesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/lines': {
-      id: '/lines'
-      path: '/lines'
-      fullPath: '/lines'
-      preLoaderRoute: typeof LinesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/lookup': {
-      id: '/lookup'
-      path: '/lookup'
-      fullPath: '/lookup'
-      preLoaderRoute: typeof LookupRouteImport
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/map': {
@@ -374,32 +262,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MapRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/membership-tiers': {
-      id: '/membership-tiers'
-      path: '/membership-tiers'
-      fullPath: '/membership-tiers'
-      preLoaderRoute: typeof MembershipTiersRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/notifications': {
       id: '/notifications'
       path: '/notifications'
       fullPath: '/notifications'
       preLoaderRoute: typeof NotificationsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/parking': {
-      id: '/parking'
-      path: '/parking'
-      fullPath: '/parking'
-      preLoaderRoute: typeof ParkingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/passenger-flow': {
-      id: '/passenger-flow'
-      path: '/passenger-flow'
-      fullPath: '/passenger-flow'
-      preLoaderRoute: typeof PassengerFlowRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/period-closing': {
@@ -409,13 +276,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PeriodClosingRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/policies': {
-      id: '/policies'
-      path: '/policies'
-      fullPath: '/policies'
-      preLoaderRoute: typeof PoliciesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/promotions': {
       id: '/promotions'
       path: '/promotions'
@@ -423,18 +283,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PromotionsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/reconciliation': {
-      id: '/reconciliation'
-      path: '/reconciliation'
-      fullPath: '/reconciliation'
-      preLoaderRoute: typeof ReconciliationRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/revenue': {
       id: '/revenue'
       path: '/revenue'
       fullPath: '/revenue'
       preLoaderRoute: typeof RevenueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/station-stats': {
+      id: '/station-stats'
+      path: '/station-stats'
+      fullPath: '/station-stats'
+      preLoaderRoute: typeof StationStatsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/stations': {
@@ -478,21 +338,14 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ApprovalsRoute: ApprovalsRoute,
-  AssignmentsRoute: AssignmentsRoute,
   AuditLogsRoute: AuditLogsRoute,
-  BusesRoute: BusesRoute,
-  LinesRoute: LinesRoute,
-  LookupRoute: LookupRoute,
+  LoginRoute: LoginRoute,
   MapRoute: MapRoute,
-  MembershipTiersRoute: MembershipTiersRoute,
   NotificationsRoute: NotificationsRoute,
-  ParkingRoute: ParkingRoute,
-  PassengerFlowRoute: PassengerFlowRoute,
   PeriodClosingRoute: PeriodClosingRoute,
-  PoliciesRoute: PoliciesRoute,
   PromotionsRoute: PromotionsRoute,
-  ReconciliationRoute: ReconciliationRoute,
   RevenueRoute: RevenueRoute,
+  StationStatsRoute: StationStatsRoute,
   StationsRoute: StationsRoute,
   TicketsRoute: TicketsRoute,
   TrainsRoute: TrainsRoute,

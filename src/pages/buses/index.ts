@@ -1,1 +1,1 @@
-export { BusesPage } from "@/pages/buses/BusesPage";
+export { BusesPanel } from "@/pages/buses/BusesPanel";

@@ -1,7 +1,8 @@
-import { Plus } from "lucide-react";
-import { AppShell } from "@/components/app-shell";
-import { ReasonDialog } from "@/components/shared";
+import { MapPinned, Plus, Users } from "lucide-react";
+import { AppShell, PageTabs } from "@/components/app-shell";
+import { ReasonDialog, Section } from "@/components/shared";
 import { Button } from "@/components/ui/button";
+import { AssignmentsPanel } from "@/pages/assignments";
 import { UserCreateDialog } from "@/pages/users/components/UserCreateDialog";
 import { UserDetailsSheet } from "@/pages/users/components/UserDetailsSheet";
 import { UserFilters } from "@/pages/users/components/UserFilters";
@@ -9,29 +10,31 @@ import { UserPasswordResetDialog } from "@/pages/users/components/UserPasswordRe
 import { UsersTable } from "@/pages/users/components/UsersTable";
 import { useUsers } from "@/pages/users/hooks/useUsers";
 
-export function UsersPage() {
+function AccountsPanel() {
   const users = useUsers();
 
   return (
-    <AppShell
-      title="Người dùng"
-      roles={["ADMIN"]}
-      actions={
-        <Button onClick={() => users.setCreateOpen(true)}>
-          <Plus className="h-4 w-4" />
-          Tạo tài khoản
-        </Button>
-      }
-    >
-      <UserFilters
-        query={users.query}
-        role={users.role}
-        status={users.status}
-        onQueryChange={users.setQuery}
-        onRoleChange={users.setRole}
-        onStatusChange={users.setStatus}
-      />
-      <UsersTable rows={users.rows} onSelect={users.setSelectedUser} />
+    <>
+      <Section
+        title="Danh sách tài khoản"
+        description="Tài khoản nội bộ: Admin, Manager, Kế toán và nhân viên ga"
+        action={
+          <Button onClick={() => users.setCreateOpen(true)}>
+            <Plus className="h-4 w-4" />
+            Tạo tài khoản
+          </Button>
+        }
+      >
+        <UserFilters
+          query={users.query}
+          role={users.role}
+          status={users.status}
+          onQueryChange={users.setQuery}
+          onRoleChange={users.setRole}
+          onStatusChange={users.setStatus}
+        />
+        <UsersTable rows={users.rows} onSelect={users.setSelectedUser} />
+      </Section>
       <UserDetailsSheet
         user={users.selectedUser}
         stationName={users.selectedStationName}
@@ -60,6 +63,24 @@ export function UsersPage() {
         onClose={() => users.setCreateOpen(false)}
         onDraftChange={users.setCreateDraft}
         onSubmit={users.submitCreate}
+      />
+    </>
+  );
+}
+
+export function UsersPage() {
+  return (
+    <AppShell title="Tài khoản & phân công">
+      <PageTabs
+        tabs={[
+          { value: "accounts", label: "Tài khoản", icon: Users, content: <AccountsPanel /> },
+          {
+            value: "assignments",
+            label: "Phân công ga",
+            icon: MapPinned,
+            content: <AssignmentsPanel />,
+          },
+        ]}
       />
     </AppShell>
   );

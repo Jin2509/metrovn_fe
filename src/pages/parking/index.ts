@@ -1,1 +1,1 @@
-export { ParkingPage } from "@/pages/parking/ParkingPage";
+export { ParkingPanel } from "@/pages/parking/ParkingPanel";

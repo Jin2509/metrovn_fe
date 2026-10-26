@@ -1,8 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ApprovalsPage } from "@/pages/approvals";
+import { tabSearch } from "@/components/app-shell";
 import { seo } from "@/lib/seo";
+import { ApprovalsPage } from "@/pages/approvals";
 
 export const Route = createFileRoute("/approvals")({
-  head: seo("Hộp phê duyệt", "Manager phê duyệt hoặc từ chối thay đổi do Admin đề xuất."),
+  head: seo(
+    "Phê duyệt & chính sách",
+    "Duyệt các thay đổi giá, vé, vận hành và xem chính sách đang áp dụng.",
+  ),
+  validateSearch: tabSearch,
   component: ApprovalsPage,
 });

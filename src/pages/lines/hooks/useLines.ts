@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { lineStations, lines } from "@/mocks/metro";
+import { lineStations, lines, stations } from "@/mocks/metro";
 import { LINES_ORDER_ERROR_MESSAGE } from "@/pages/lines/lines.constants";
-import { saveStationOrder } from "@/pages/lines/lines.service";
+import { buildLine3DModel, saveStationOrder } from "@/pages/lines/lines.service";
 import type { StationOrder } from "@/pages/lines/lines.types";
 
 export function useLines() {
@@ -17,6 +17,8 @@ export function useLines() {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [error, setError] = useState("");
   const line = lines.find((currentLine) => currentLine.id === lineId)!;
+  // Mô hình 3D bám theo thứ tự đang chỉnh để xem trước ngay khi kéo thả.
+  const model3d = useMemo(() => buildLine3DModel(order, stations, lineId), [order, lineId]);
 
   const selectLine = (nextLineId: string) => {
     setLineId(nextLineId);
@@ -64,6 +66,7 @@ export function useLines() {
     lines,
     line,
     order,
+    model3d,
     dragIndex,
     error,
     selectLine,

@@ -1,1 +1,1 @@
-export { ReconciliationPage } from "@/pages/reconciliation/ReconciliationPage";
+export { ReconciliationPanel } from "@/pages/reconciliation/ReconciliationPanel";

@@ -1,1 +1,1 @@
-export { PassengerFlowPage } from "@/pages/passengerflow/PassengerFlowPage";
+export { PassengerFlowPanel } from "@/pages/passengerflow/PassengerFlowPanel";

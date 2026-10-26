@@ -7,7 +7,7 @@ export function TrainsPage() {
   const { trains, configs, sendConfig } = useTrains();
 
   return (
-    <AppShell title="Tàu & cấu hình vận hành" roles={["ADMIN"]}>
+    <AppShell title="Tàu & cấu hình vận hành">
       <TrainFleetTable trains={trains} />
       <OperationConfigTable configs={configs} onSend={sendConfig} />
     </AppShell>

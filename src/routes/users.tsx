@@ -1,8 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { UsersPage } from "@/pages/users";
+import { tabSearch } from "@/components/app-shell";
 import { seo } from "@/lib/seo";
+import { UsersPage } from "@/pages/users";
 
 export const Route = createFileRoute("/users")({
-  head: seo("Người dùng", "Quản lý tài khoản người dùng, khóa/mở và đặt lại mật khẩu."),
+  head: seo(
+    "Tài khoản & phân công",
+    "Quản lý tài khoản nội bộ, khóa/mở, đặt lại mật khẩu và phân công nhân viên theo ga.",
+  ),
+  validateSearch: tabSearch,
   component: UsersPage,
 });

@@ -1,15 +1,6 @@
+import { getActorName } from "@/lib/auth/session.store";
 import { createStore } from "@/lib/store";
 import { stations } from "./metro";
-
-export type Role = "ADMIN" | "MANAGER" | "ACCOUNTANT";
-export const roleLabel: Record<Role, string> = {
-  ADMIN: "Admin",
-  MANAGER: "Manager",
-  ACCOUNTANT: "Kế toán",
-};
-export const roleStore = createStore<Role>("ADMIN");
-export const currentUser = (r: Role) =>
-  ({ ADMIN: "Nguyễn Văn An", MANAGER: "Trần Thị Bình", ACCOUNTANT: "Lê Minh Châu" })[r];
 
 const names = [
   "Phạm Quốc Huy",
@@ -131,7 +122,7 @@ export function submitApproval(type: ApprovalType, title: string, changes: Appro
       id: `A${Date.now()}`,
       type,
       title,
-      by: currentUser("ADMIN"),
+      by: getActorName(),
       at: new Date().toLocaleString("vi-VN"),
       status: "PENDING",
       changes,
@@ -161,12 +152,11 @@ export const auditStore = createStore<Audit[]>(
   })),
 );
 export function logAction(action: string, target: string) {
-  const r = roleStore.get();
   auditStore.set((a) => [
     {
       id: `L${Date.now()}`,
       at: new Date().toLocaleString("vi-VN"),
-      actor: currentUser(r),
+      actor: getActorName(),
       action,
       target,
     },

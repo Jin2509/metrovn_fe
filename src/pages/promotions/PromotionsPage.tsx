@@ -1,25 +1,20 @@
-import { Plus } from "lucide-react";
-import { AppShell } from "@/components/app-shell";
-import { Button } from "@/components/ui/button";
+import { BadgePercent, Crown } from "lucide-react";
+import { AppShell, PageTabs } from "@/components/app-shell";
+import { MembershipTierPanel } from "@/pages/membershiptier";
 import { PromotionFormDialog } from "@/pages/promotions/components/PromotionFormDialog";
 import { PromotionTable } from "@/pages/promotions/components/PromotionTable";
 import { usePromotions } from "@/pages/promotions/hooks/usePromotions";
 
-export function PromotionsPage() {
+function PromotionListPanel() {
   const { promos, open, setOpen, draft, setDraft, error, save, toggleStatus } = usePromotions();
 
   return (
-    <AppShell
-      title="Khuyến mãi"
-      roles={["ADMIN"]}
-      actions={
-        <Button onClick={() => setOpen(true)}>
-          <Plus className="h-4 w-4" />
-          Tạo khuyến mãi
-        </Button>
-      }
-    >
-      <PromotionTable promos={promos} onToggleStatus={toggleStatus} />
+    <>
+      <PromotionTable
+        promos={promos}
+        onToggleStatus={toggleStatus}
+        onCreate={() => setOpen(true)}
+      />
       <PromotionFormDialog
         open={open}
         draft={draft}
@@ -27,6 +22,29 @@ export function PromotionsPage() {
         onOpenChange={setOpen}
         onDraftChange={setDraft}
         onSave={save}
+      />
+    </>
+  );
+}
+
+export function PromotionsPage() {
+  return (
+    <AppShell title="Ưu đãi & thành viên">
+      <PageTabs
+        tabs={[
+          {
+            value: "promotions",
+            label: "Khuyến mãi",
+            icon: BadgePercent,
+            content: <PromotionListPanel />,
+          },
+          {
+            value: "tiers",
+            label: "Hạng thành viên",
+            icon: Crown,
+            content: <MembershipTierPanel />,
+          },
+        ]}
       />
     </AppShell>
   );

@@ -1,1 +1,1 @@
-export { MembershipTierPage } from "@/pages/membershiptier/MembershipTierPage";
+export { MembershipTierPanel } from "@/pages/membershiptier/MembershipTierPanel";

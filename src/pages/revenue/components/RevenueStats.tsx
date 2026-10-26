@@ -1,3 +1,4 @@
+import { Receipt, RotateCcw, Wallet, WalletCards } from "lucide-react";
 import { StatCard, money } from "@/components/shared";
 
 export function RevenueStats({
@@ -12,11 +13,11 @@ export function RevenueStats({
   count: number;
 }) {
   return (
-    <div className="grid gap-4 sm:grid-cols-4">
-      <StatCard label="Tổng doanh thu" value={money(total)} />
-      <StatCard label="Hoàn tiền" value={money(refund)} />
-      <StatCard label="Doanh thu thuần" value={money(net)} />
-      <StatCard label="Số giao dịch" value={count} />
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <StatCard label="Tổng doanh thu" value={money(total)} icon={Wallet} />
+      <StatCard label="Hoàn tiền" value={money(refund)} icon={RotateCcw} tone="destructive" />
+      <StatCard label="Doanh thu thuần" value={money(net)} icon={WalletCards} tone="success" />
+      <StatCard label="Số giao dịch" value={count} icon={Receipt} tone="muted" />
     </div>
   );
 }

@@ -1,11 +1,11 @@
 import {
   approvalsStore,
-  currentUser,
   logAction,
   operationConfigsStore,
   promosStore,
   type Approval,
 } from "@/mocks/admin";
+import { getActorName } from "@/lib/auth/session.store";
 import type { ApprovalDecisionStatus } from "@/pages/approvals/approvals.types";
 
 export function applyApprovalDecision(
@@ -16,7 +16,7 @@ export function applyApprovalDecision(
   approvalsStore.set((approvals) =>
     approvals.map((currentApproval) =>
       currentApproval.id === approval.id
-        ? { ...currentApproval, status, reason, decidedBy: currentUser("MANAGER") }
+        ? { ...currentApproval, status, reason, decidedBy: getActorName() }
         : currentApproval,
     ),
   );
@@ -28,7 +28,7 @@ export function applyApprovalDecision(
           ? {
               ...config,
               status: status === "APPROVED" ? "ACTIVE" : "DRAFT",
-              approvedBy: status === "APPROVED" ? currentUser("MANAGER") : "",
+              approvedBy: status === "APPROVED" ? getActorName() : "",
             }
           : status === "APPROVED" && config.status === "ACTIVE"
             ? { ...config, status: "INACTIVE" }
