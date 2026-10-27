@@ -1,13 +1,25 @@
+import { haversine } from "@/lib/geo";
+import { createStore } from "@/lib/store";
+
 // Dữ liệu giả cho Metro TP.HCM — thay bằng API thật qua tầng service sau này.
+// Tên trường bám theo bảng `station`, `metro_line`, `line_station` trong báo cáo (mục 3.3.2).
+
+/** Trạng thái ga theo bảng `station`: ACTIVE · INACTIVE (chưa/ngừng khai thác) · MAINTENANCE (bảo trì). */
+export type StationStatus = "ACTIVE" | "INACTIVE" | "MAINTENANCE";
+
 export type Station = {
   id: string;
+  code: string;
   name: string;
+  address: string;
+  district: string;
   lineIds: string[];
   lat: number;
   lng: number;
   order: number;
   interchange: boolean;
-  status: "ACTIVE" | "INACTIVE";
+  status: StationStatus;
+  /** Lượt vào ga trung bình/ngày — tổng hợp từ bảng ticket_usage_history (event_type = ENTRY). */
   dailyFlow: number;
 };
 export type MetroLine = {
@@ -68,6 +80,23 @@ const l1: [string, number, number, boolean][] = [
   ["Đại học Quốc gia", 10.8665, 106.8013, false],
   ["Suối Tiên", 10.8794, 106.8143, false],
 ];
+const L1_DISTRICTS = [
+  "Quận 1",
+  "Quận 1",
+  "Quận 1",
+  "Bình Thạnh",
+  "Bình Thạnh",
+  "TP. Thủ Đức",
+  "TP. Thủ Đức",
+  "TP. Thủ Đức",
+  "TP. Thủ Đức",
+  "TP. Thủ Đức",
+  "TP. Thủ Đức",
+  "TP. Thủ Đức",
+  "TP. Thủ Đức",
+  "TP. Thủ Đức",
+];
+
 const l2: [string, number, number][] = [
   ["Tao Đàn", 10.7746, 106.6919],
   ["Dân Chủ", 10.7781, 106.6812],
@@ -84,7 +113,10 @@ const l2: [string, number, number][] = [
 export const stations: Station[] = [
   ...l1.map(([name, lat, lng, ic], i) => ({
     id: `S1-${i + 1}`,
+    code: `L1-${String(i + 1).padStart(2, "0")}`,
     name,
+    address: `Ga ${name}`,
+    district: L1_DISTRICTS[i],
     lineIds: ic ? ["L1", "L2"] : ["L1"],
     lat,
     lng,
@@ -95,7 +127,10 @@ export const stations: Station[] = [
   })),
   ...l2.map(([name, lat, lng], i) => ({
     id: `S2-${i + 1}`,
+    code: `L2-${String(i + 2).padStart(2, "0")}`,
     name,
+    address: `Ga ${name} (quy hoạch)`,
+    district: i < 3 ? "Quận 3" : i < 6 ? "Quận 10" : "Tân Bình",
     lineIds: ["L2"],
     lat,
     lng,
@@ -106,13 +141,66 @@ export const stations: Station[] = [
   })),
 ];
 
-export function lineStations(lineId: string) {
-  const list = stations.filter((s) => s.lineIds.includes(lineId));
-  if (lineId === "L2") {
-    const bt = stations.find((s) => s.id === "S1-1")!;
-    return [bt, ...list.filter((s) => s.id !== "S1-1")];
-  }
-  return list.sort((a, b) => a.order - b.order);
+/** Kho ga dùng cho màn hình quản lý ga; mảng `stations` được đồng bộ theo để các chỗ chỉ đọc vẫn đúng. */
+export const stationsStore = createStore<Station[]>([...stations]);
+
+export function replaceStations(next: Station[]) {
+  stations.splice(0, stations.length, ...next);
+  stationsStore.set(() => [...next]);
+}
+
+/** Một dòng của bảng `line_station`. */
+export type LineStation = {
+  lineId: string;
+  stationId: string;
+  order: number;
+  /** Khoảng cách từ ga trước (km) theo lý trình đường ray; null với ga đầu tuyến. */
+  distanceFromPrevKm: number | null;
+  /** Thời gian chạy từ ga trước (giây); null với ga đầu tuyến. */
+  travelTimeFromPrevSec: number | null;
+  /** Thời gian tàu dừng tại ga (giây), mặc định 30. */
+  dwellSec: number;
+};
+
+// Lý trình mẫu: khoảng cách đường chim bay × 1,065 (đường ray dài hơn) để tổng Tuyến 1 ≈ 19,7 km,
+// thời gian chạy theo tốc độ trung bình 45 km/h giữa hai ga.
+function seedLineStations(lineId: string, ordered: Station[]): LineStation[] {
+  return ordered.map((s, i) => {
+    const km =
+      i === 0 ? null : Math.round((haversine(ordered[i - 1], s) / 1000) * 1.065 * 100) / 100;
+    return {
+      lineId,
+      stationId: s.id,
+      order: i + 1,
+      distanceFromPrevKm: km,
+      travelTimeFromPrevSec: km === null ? null : Math.round((km / 45) * 3600),
+      dwellSec: 30,
+    };
+  });
+}
+
+const l1Ordered = stations
+  .filter((s) => s.lineIds.includes("L1"))
+  .sort((a, b) => a.order - b.order);
+const l2Ordered = [
+  stations.find((s) => s.id === "S1-1")!,
+  ...stations.filter((s) => s.id.startsWith("S2-")),
+];
+
+export const lineStationsStore = createStore<LineStation[]>([
+  ...seedLineStations("L1", l1Ordered),
+  ...seedLineStations("L2", l2Ordered),
+]);
+
+/** Các dòng tuyến – ga của một tuyến, theo thứ tự ga. */
+export const lineStationRows = (lineId: string, rows = lineStationsStore.get()) =>
+  rows.filter((r) => r.lineId === lineId).sort((a, b) => a.order - b.order);
+
+/** Ga của một tuyến theo thứ tự trong bảng `line_station`. */
+export function lineStations(lineId: string): Station[] {
+  return lineStationRows(lineId)
+    .map((r) => stations.find((s) => s.id === r.stationId))
+    .filter((s): s is Station => !!s);
 }
 
 export const busRoutes: BusRoute[] = [

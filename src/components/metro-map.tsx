@@ -8,11 +8,31 @@ import {
   TileLayer,
   Tooltip,
   useMap,
+  useMapEvents,
 } from "react-leaflet";
 import { useEffect } from "react";
-import { busStops, lines, lineStations, stations, stopsForStation } from "@/mocks/metro";
+import {
+  busStops,
+  lineStations,
+  lineStationsStore,
+  lines,
+  stations,
+  stationsStore,
+  stopsForStation,
+} from "@/mocks/metro";
+
+/** Màu tô ga (nền) và viền cảnh báo — dùng mã màu cố định vì Leaflet vẽ ngoài hệ token CSS. */
+export type StationMarkerState = { fill: string; label?: string };
 
 type Props = {
+  /** Tô màu từng ga theo trạng thái ga / thông báo đang hiệu lực; ga không có trong map giữ màu trắng. */
+  stationStates?: Record<string, StationMarkerState> | undefined;
+  /** Bấm lên bản đồ để chọn tọa độ (form thêm/sửa ga). */
+  onPickLocation?: ((lat: number, lng: number) => void) | undefined;
+  /** Điểm đang chọn trong form — vẽ ghim để người dùng thấy vị trí. */
+  pickedPoint?: { lat: number; lng: number } | null | undefined;
+  /** Vị trí tàu (mô phỏng theo lịch) — vẽ chấm nhỏ màu đậm, chú thích hướng chạy. */
+  trains?: { id: string; lat: number; lng: number; label: string }[] | undefined;
   showBus?: boolean | undefined;
   visibleLines?: string[] | undefined;
   focusStationId?: string | null | undefined;
@@ -20,6 +40,14 @@ type Props = {
   onSelectStation?: ((id: string) => void) | undefined;
   height?: number | string | undefined;
 };
+
+function PickLocation({ onPick }: { onPick: (lat: number, lng: number) => void }) {
+  useMapEvents({
+    click: (e) =>
+      onPick(Math.round(e.latlng.lat * 1e7) / 1e7, Math.round(e.latlng.lng * 1e7) / 1e7),
+  });
+  return null;
+}
 
 function Focus({ id }: { id?: string | null | undefined }) {
   const map = useMap();
@@ -37,7 +65,14 @@ export default function MetroMap({
   highlightRoute,
   onSelectStation,
   height = 520,
+  stationStates,
+  trains = [],
+  onPickLocation,
+  pickedPoint,
 }: Props) {
+  // Vẽ lại khi Admin thêm/sửa ga hoặc đổi thứ tự ga trên tuyến.
+  stationsStore.use();
+  lineStationsStore.use();
   const busColor = "oklch(0.65 0.17 140)";
   return (
     <MapContainer
@@ -51,6 +86,18 @@ export default function MetroMap({
         url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
       <Focus id={focusStationId} />
+      {onPickLocation && <PickLocation onPick={onPickLocation} />}
+      {pickedPoint && (
+        <CircleMarker
+          center={[pickedPoint.lat, pickedPoint.lng]}
+          radius={9}
+          pathOptions={{ color: "#0f172a", weight: 3, fillColor: "#f59e0b", fillOpacity: 1 }}
+        >
+          <Tooltip permanent direction="top" offset={[0, -8]}>
+            Vị trí ga
+          </Tooltip>
+        </CircleMarker>
+      )}
       {lines
         .filter((l) => visibleLines.includes(l.id))
         .map((l) => (
@@ -107,30 +154,53 @@ export default function MetroMap({
         .filter((s) => s.lineIds.some((l) => visibleLines.includes(l)))
         .map((s) => {
           const color = lines.find((l) => l.id === s.lineIds[0])!.colorHex;
+          const state = stationStates?.[s.id];
+          const focused = s.id === focusStationId;
           return (
             <CircleMarker
-              key={s.id}
+              key={`${s.id}-${state?.fill ?? ""}-${focused}`}
               center={[s.lat, s.lng]}
-              radius={s.interchange ? 10 : 7}
-              pathOptions={{ color, weight: 3, fillColor: "#ffffff", fillOpacity: 1 }}
+              radius={(s.interchange ? 10 : 7) + (focused ? 3 : 0)}
+              pathOptions={{
+                color: focused ? "#0f172a" : color,
+                weight: focused ? 4 : 3,
+                fillColor: state?.fill ?? "#ffffff",
+                fillOpacity: 1,
+              }}
               eventHandlers={{ click: () => onSelectStation?.(s.id) }}
             >
               <Tooltip direction="top" offset={[0, -6]}>
                 {s.name}
+                {state?.label && ` · ${state.label}`}
               </Tooltip>
               <Popup>
                 <strong>Ga {s.name}</strong>
                 {s.interchange && " · ga chuyển tuyến"}
                 <br />
+                {s.code} ·{" "}
                 {s.status === "ACTIVE"
-                  ? `Lưu lượng: ${s.dailyFlow.toLocaleString("vi-VN")} lượt/ngày`
-                  : "Đang quy hoạch"}
+                  ? `${s.dailyFlow.toLocaleString("vi-VN")} lượt vào/ngày`
+                  : s.status === "MAINTENANCE"
+                    ? "Đang bảo trì"
+                    : "Chưa khai thác"}
                 <br />
                 Trạm buýt kết nối: {stopsForStation(s.id).length}
               </Popup>
             </CircleMarker>
           );
         })}
+      {trains.map((t) => (
+        <CircleMarker
+          key={t.id}
+          center={[t.lat, t.lng]}
+          radius={6}
+          pathOptions={{ color: "#ffffff", weight: 2, fillColor: "#0f172a", fillOpacity: 1 }}
+        >
+          <Tooltip direction="top" offset={[0, -4]}>
+            {t.label}
+          </Tooltip>
+        </CircleMarker>
+      ))}
     </MapContainer>
   );
 }

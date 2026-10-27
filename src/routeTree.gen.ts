@@ -12,12 +12,15 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApprovalsRouteImport } from './routes/approvals'
 import { Route as AuditLogsRouteImport } from './routes/audit-logs'
+import { Route as ChatbotRouteImport } from './routes/chatbot'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MapRouteImport } from './routes/map'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as PeriodClosingRouteImport } from './routes/period-closing'
+import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as PromotionsRouteImport } from './routes/promotions'
 import { Route as RevenueRouteImport } from './routes/revenue'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as StationStatsRouteImport } from './routes/station-stats'
 import { Route as StationsRouteImport } from './routes/stations'
 import { Route as TicketsRouteImport } from './routes/tickets'
@@ -40,6 +43,11 @@ const AuditLogsRoute = AuditLogsRouteImport.update({
   path: '/audit-logs',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ChatbotRoute = ChatbotRouteImport.update({
+  id: '/chatbot',
+  path: '/chatbot',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -60,6 +68,11 @@ const PeriodClosingRoute = PeriodClosingRouteImport.update({
   path: '/period-closing',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PromotionsRoute = PromotionsRouteImport.update({
   id: '/promotions',
   path: '/promotions',
@@ -68,6 +81,11 @@ const PromotionsRoute = PromotionsRouteImport.update({
 const RevenueRoute = RevenueRouteImport.update({
   id: '/revenue',
   path: '/revenue',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const StationStatsRoute = StationStatsRouteImport.update({
@@ -105,12 +123,15 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/approvals': typeof ApprovalsRoute
   '/audit-logs': typeof AuditLogsRoute
+  '/chatbot': typeof ChatbotRoute
   '/login': typeof LoginRoute
   '/map': typeof MapRoute
   '/notifications': typeof NotificationsRoute
   '/period-closing': typeof PeriodClosingRoute
+  '/profile': typeof ProfileRoute
   '/promotions': typeof PromotionsRoute
   '/revenue': typeof RevenueRoute
+  '/settings': typeof SettingsRoute
   '/station-stats': typeof StationStatsRoute
   '/stations': typeof StationsRoute
   '/tickets': typeof TicketsRoute
@@ -122,12 +143,15 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/approvals': typeof ApprovalsRoute
   '/audit-logs': typeof AuditLogsRoute
+  '/chatbot': typeof ChatbotRoute
   '/login': typeof LoginRoute
   '/map': typeof MapRoute
   '/notifications': typeof NotificationsRoute
   '/period-closing': typeof PeriodClosingRoute
+  '/profile': typeof ProfileRoute
   '/promotions': typeof PromotionsRoute
   '/revenue': typeof RevenueRoute
+  '/settings': typeof SettingsRoute
   '/station-stats': typeof StationStatsRoute
   '/stations': typeof StationsRoute
   '/tickets': typeof TicketsRoute
@@ -140,12 +164,15 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/approvals': typeof ApprovalsRoute
   '/audit-logs': typeof AuditLogsRoute
+  '/chatbot': typeof ChatbotRoute
   '/login': typeof LoginRoute
   '/map': typeof MapRoute
   '/notifications': typeof NotificationsRoute
   '/period-closing': typeof PeriodClosingRoute
+  '/profile': typeof ProfileRoute
   '/promotions': typeof PromotionsRoute
   '/revenue': typeof RevenueRoute
+  '/settings': typeof SettingsRoute
   '/station-stats': typeof StationStatsRoute
   '/stations': typeof StationsRoute
   '/tickets': typeof TicketsRoute
@@ -159,12 +186,15 @@ export interface FileRouteTypes {
     | '/'
     | '/approvals'
     | '/audit-logs'
+    | '/chatbot'
     | '/login'
     | '/map'
     | '/notifications'
     | '/period-closing'
+    | '/profile'
     | '/promotions'
     | '/revenue'
+    | '/settings'
     | '/station-stats'
     | '/stations'
     | '/tickets'
@@ -176,12 +206,15 @@ export interface FileRouteTypes {
     | '/'
     | '/approvals'
     | '/audit-logs'
+    | '/chatbot'
     | '/login'
     | '/map'
     | '/notifications'
     | '/period-closing'
+    | '/profile'
     | '/promotions'
     | '/revenue'
+    | '/settings'
     | '/station-stats'
     | '/stations'
     | '/tickets'
@@ -193,12 +226,15 @@ export interface FileRouteTypes {
     | '/'
     | '/approvals'
     | '/audit-logs'
+    | '/chatbot'
     | '/login'
     | '/map'
     | '/notifications'
     | '/period-closing'
+    | '/profile'
     | '/promotions'
     | '/revenue'
+    | '/settings'
     | '/station-stats'
     | '/stations'
     | '/tickets'
@@ -211,12 +247,15 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ApprovalsRoute: typeof ApprovalsRoute
   AuditLogsRoute: typeof AuditLogsRoute
+  ChatbotRoute: typeof ChatbotRoute
   LoginRoute: typeof LoginRoute
   MapRoute: typeof MapRoute
   NotificationsRoute: typeof NotificationsRoute
   PeriodClosingRoute: typeof PeriodClosingRoute
+  ProfileRoute: typeof ProfileRoute
   PromotionsRoute: typeof PromotionsRoute
   RevenueRoute: typeof RevenueRoute
+  SettingsRoute: typeof SettingsRoute
   StationStatsRoute: typeof StationStatsRoute
   StationsRoute: typeof StationsRoute
   TicketsRoute: typeof TicketsRoute
@@ -248,6 +287,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuditLogsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/chatbot': {
+      id: '/chatbot'
+      path: '/chatbot'
+      fullPath: '/chatbot'
+      preLoaderRoute: typeof ChatbotRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -276,6 +322,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PeriodClosingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/promotions': {
       id: '/promotions'
       path: '/promotions'
@@ -288,6 +341,13 @@ declare module '@tanstack/react-router' {
       path: '/revenue'
       fullPath: '/revenue'
       preLoaderRoute: typeof RevenueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/station-stats': {
@@ -339,12 +399,15 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ApprovalsRoute: ApprovalsRoute,
   AuditLogsRoute: AuditLogsRoute,
+  ChatbotRoute: ChatbotRoute,
   LoginRoute: LoginRoute,
   MapRoute: MapRoute,
   NotificationsRoute: NotificationsRoute,
   PeriodClosingRoute: PeriodClosingRoute,
+  ProfileRoute: ProfileRoute,
   PromotionsRoute: PromotionsRoute,
   RevenueRoute: RevenueRoute,
+  SettingsRoute: SettingsRoute,
   StationStatsRoute: StationStatsRoute,
   StationsRoute: StationsRoute,
   TicketsRoute: TicketsRoute,

@@ -1,6 +1,4 @@
-import type { MetroLine, Station } from "@/mocks/metro";
+import type { MetroLine, Station, StationStatus } from "@/mocks/metro";
 
-export type StationListRow = Station & {
-  connectedBusStopCount: number;
-  lines: MetroLine[];
-};
+export type StationListRow = Station & { lines: MetroLine[]; staffCount: number };
+export type StationStatusFilter = "ALL" | StationStatus;

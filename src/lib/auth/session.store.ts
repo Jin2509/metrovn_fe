@@ -137,6 +137,22 @@ export function watchSession(onExpire: () => void) {
   };
 }
 
+/** Cập nhật thông tin người dùng trong phiên hiện tại (sau khi sửa hồ sơ), giữ nguyên nơi lưu phiên. */
+export function updateSessionUser(patch: Partial<Pick<SessionUser, "name" | "phone">>) {
+  const current = authStore.get().user;
+  if (!current) return;
+  const user = { ...current, ...patch };
+  for (const s of storages()) {
+    try {
+      const session = parseSession(s.getItem(STORAGE_KEY));
+      if (session) s.setItem(STORAGE_KEY, JSON.stringify({ ...session, user }));
+    } catch {
+      /* ignore */
+    }
+  }
+  authStore.set((state) => ({ ...state, user }));
+}
+
 /** Tên người đang thao tác — dùng cho nhật ký hệ thống và người duyệt/đối soát. */
 export function getActorName(): string {
   return authStore.get().user?.name ?? "Hệ thống";

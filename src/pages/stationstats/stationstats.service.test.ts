@@ -15,6 +15,9 @@ const station = (
   ({
     id,
     name,
+    code: id,
+    address: "",
+    district: "",
     lineIds,
     lat: 0,
     lng: 0,

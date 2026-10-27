@@ -30,7 +30,11 @@ export function PageTabs({ tabs }: { tabs: PageTab[] }) {
       onValueChange={(value) =>
         navigate({
           to: ".",
-          search: { tab: value === visible[0].value ? undefined : value },
+          // Giữ các tham số khác trên URL (vd. ?station=) khi đổi tab.
+          search: (prev: Record<string, unknown>) => ({
+            ...prev,
+            tab: value === visible[0].value ? undefined : value,
+          }),
           replace: true,
         } as never)
       }

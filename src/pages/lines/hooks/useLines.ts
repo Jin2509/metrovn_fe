@@ -1,79 +1,101 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { lineStations, lines, stations } from "@/mocks/metro";
-import { LINES_ORDER_ERROR_MESSAGE } from "@/pages/lines/lines.constants";
-import { buildLine3DModel, saveStationOrder } from "@/pages/lines/lines.service";
-import type { StationOrder } from "@/pages/lines/lines.types";
+import {
+  chainage,
+  requestLineOrderChange,
+  validateLineOrder,
+  type LineApprovalPayload,
+} from "@/lib/network";
+import { approvalsStore } from "@/mocks/admin";
+import {
+  lineStationRows,
+  lineStationsStore,
+  lines,
+  stationsStore,
+  type LineStation,
+} from "@/mocks/metro";
+import { moveRow, renumber } from "@/pages/lines/lines.service";
 
 export function useLines() {
+  const all = lineStationsStore.use();
+  const stations = stationsStore.use();
+  const approvals = approvalsStore.use();
   const [lineId, setLineId] = useState("L1");
-  const [order, setOrder] = useState<StationOrder[]>(() =>
-    lineStations("L1").map((station, index) => ({
-      id: station.id,
-      name: station.name,
-      no: index + 1,
-    })),
-  );
+  const [rows, setRows] = useState<LineStation[]>(() => lineStationRows("L1", all));
   const [dragIndex, setDragIndex] = useState<number | null>(null);
-  const [error, setError] = useState("");
-  const line = lines.find((currentLine) => currentLine.id === lineId)!;
-  // Mô hình 3D bám theo thứ tự đang chỉnh để xem trước ngay khi kéo thả.
-  const model3d = useMemo(() => buildLine3DModel(order, stations, lineId), [order, lineId]);
+  const [errors, setErrors] = useState<string[]>([]);
+  const line = lines.find((l) => l.id === lineId)!;
+  const saved = lineStationRows(lineId, all);
+  const dirty = JSON.stringify(rows) !== JSON.stringify(saved);
+  const pendingCount = approvals.filter(
+    (a) =>
+      a.type === "LINE" &&
+      a.status === "PENDING" &&
+      (a.payload as LineApprovalPayload)?.lineId === lineId,
+  ).length;
+  const withChainage = useMemo(() => chainage([...rows].sort((a, b) => a.order - b.order)), [rows]);
 
-  const selectLine = (nextLineId: string) => {
-    setLineId(nextLineId);
-    setOrder(
-      lineStations(nextLineId).map((station, index) => ({
-        id: station.id,
-        name: station.name,
-        no: index + 1,
-      })),
+  const selectLine = (id: string) => {
+    setLineId(id);
+    setRows(lineStationRows(id, all));
+    setErrors([]);
+  };
+  const update = (stationId: string, patch: Partial<LineStation>) =>
+    setRows((r) => r.map((x) => (x.stationId === stationId ? { ...x, ...patch } : x)));
+  const addStation = (stationId: string) =>
+    setRows((r) =>
+      renumber([
+        ...r,
+        {
+          lineId,
+          stationId,
+          order: r.length + 1,
+          distanceFromPrevKm: null,
+          travelTimeFromPrevSec: null,
+          dwellSec: 30,
+        },
+      ]),
     );
-    setError("");
-  };
-
-  const moveStations = (from: number, to: number) => {
-    if (to < 0 || to >= order.length) return;
-    const nextOrder = [...order];
-    const [movedStation] = nextOrder.splice(from, 1);
-    nextOrder.splice(to, 0, movedStation);
-    setOrder(nextOrder.map((station, index) => ({ ...station, no: index + 1 })));
-  };
-
-  const setStationOrderNumber = (stationId: string, orderNumber: number) => {
-    setOrder(
-      order.map((station) =>
-        station.id === stationId ? { ...station, no: orderNumber } : station,
-      ),
-    );
-  };
-
-  const dropAt = (index: number) => {
-    if (dragIndex !== null) moveStations(dragIndex, index);
-    setDragIndex(null);
-  };
+  const removeStation = (stationId: string) =>
+    setRows((r) => renumber(r.filter((x) => x.stationId !== stationId)));
 
   const save = () => {
-    const sortedOrder = saveStationOrder(order, line.code);
-    if (!sortedOrder) return setError(LINES_ORDER_ERROR_MESSAGE);
-    setOrder(sortedOrder);
-    setError("");
-    toast.success("Đã lưu toàn bộ thứ tự ga");
+    const errs = validateLineOrder(rows);
+    setErrors(errs);
+    if (errs.length) return toast.error("Thứ tự ga không hợp lệ. Không có thay đổi nào được gửi.");
+    const error = requestLineOrderChange(lineId, rows);
+    if (error) return toast.error(error);
+    toast.success("Đã gửi yêu cầu tới Manager. Thứ tự ga chỉ thay đổi sau khi được phê duyệt.");
   };
 
   return {
-    lineId,
     lines,
     line,
-    order,
-    model3d,
-    dragIndex,
-    error,
+    lineId,
     selectLine,
-    moveStations,
-    setStationOrderNumber,
-    startDragging: setDragIndex,
-    dropAt,
+    rows,
+    withChainage,
+    stationName: (id: string) => stations.find((s) => s.id === id)?.name ?? id,
+    candidates: stations.filter(
+      (s) => !rows.some((r) => r.stationId === s.id) && s.status !== "INACTIVE",
+    ),
+    update,
+    move: (from: number, to: number) => setRows((r) => moveRow(r, from, to)),
+    dragIndex,
+    setDragIndex,
+    drop: (to: number) => {
+      if (dragIndex !== null) setRows((r) => moveRow(r, dragIndex, to));
+      setDragIndex(null);
+    },
+    addStation,
+    removeStation,
+    errors,
+    dirty,
+    pendingCount,
+    reset: () => {
+      setRows(saved);
+      setErrors([]);
+    },
     save,
   };
 }

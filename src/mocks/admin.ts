@@ -38,13 +38,16 @@ export const usersStore = createStore<User[]>(
   })),
 );
 
-export type ApprovalType = "TICKET_PRICE" | "PARKING_PRICE" | "PROMOTION" | "OPERATION" | "ACCOUNT";
+export type ApprovalType =
+  "TICKET_PRICE" | "PARKING_PRICE" | "PROMOTION" | "OPERATION" | "ACCOUNT" | "STATION" | "LINE";
 export const approvalLabel: Record<ApprovalType, string> = {
   TICKET_PRICE: "Giá vé",
   PARKING_PRICE: "Giá gửi xe",
   PROMOTION: "Khuyến mãi",
   OPERATION: "Cấu hình vận hành",
   ACCOUNT: "Tài khoản & nhân viên",
+  STATION: "Nhà ga",
+  LINE: "Tuyến đường",
 };
 export type Approval = {
   id: string;
@@ -56,6 +59,11 @@ export type Approval = {
   changes: { field: string; old: string; new: string }[];
   reason?: string;
   decidedBy?: string;
+  /**
+   * Dữ liệu cần để áp dụng thay đổi khi Manager phê duyệt (xem `approvals.service.ts`).
+   * Admin chỉ được đề xuất; dữ liệu thật (ga/tuyến) chỉ được ghi vào kho dữ liệu sau khi duyệt.
+   */
+  payload?: unknown;
 };
 export const approvalsStore = createStore<Approval[]>([
   {
@@ -116,20 +124,36 @@ export const approvalsStore = createStore<Approval[]>([
     ],
   },
 ]);
-export function submitApproval(type: ApprovalType, title: string, changes: Approval["changes"]) {
+/** Tạo yêu cầu phê duyệt cho Manager; trả về mã yêu cầu để màn hình gửi duyệt theo dõi kết quả. */
+export function submitApproval(
+  type: ApprovalType,
+  title: string,
+  changes: Approval["changes"],
+  payload?: unknown,
+): string {
+  const id = `A${Date.now()}`;
   approvalsStore.set((a) => [
     {
-      id: `A${Date.now()}`,
+      id,
       type,
       title,
       by: getActorName(),
       at: new Date().toLocaleString("vi-VN"),
       status: "PENDING",
       changes,
+      payload,
     },
     ...a,
   ]);
   logAction("Gửi duyệt", title);
+  return id;
+}
+
+/** Có yêu cầu STATION/LINE nào đang chờ Manager duyệt cho đúng đối tượng này không (chặn gửi trùng). */
+export function hasPendingApproval(type: ApprovalType, matchTarget: (payload: unknown) => boolean) {
+  return approvalsStore
+    .get()
+    .some((a) => a.type === type && a.status === "PENDING" && matchTarget(a.payload));
 }
 
 export type Audit = { id: string; at: string; actor: string; action: string; target: string };
@@ -163,33 +187,6 @@ export function logAction(action: string, target: string) {
     ...a,
   ]);
 }
-
-export const trains = Array.from({ length: 8 }, (_, i) => ({
-  id: `T${101 + i}`,
-  code: `HM-${101 + i}`,
-  cars: 3,
-  capacity: 930,
-  status: i === 5 ? "MAINTENANCE" : "ACTIVE",
-  line: "Tuyến 1",
-}));
-export const operationConfigsStore = createStore([
-  {
-    id: "C3",
-    version: "v3",
-    headway: "6 phút (cao điểm) / 10 phút",
-    hours: "05:00 – 22:00",
-    status: "ACTIVE",
-    approvedBy: "Trần Thị Bình",
-  },
-  {
-    id: "C4",
-    version: "v4",
-    headway: "5 phút (cao điểm) / 10 phút",
-    hours: "05:00 – 22:30",
-    status: "DRAFT",
-    approvedBy: "",
-  },
-]);
 
 export const ticketTypesStore = createStore([
   { id: "TT1", name: "Vé lượt", validity: "Trong ngày", price: 0, status: "ACTIVE" },
@@ -287,24 +284,6 @@ export const tiersStore = createStore([
     benefits: "Giảm 15%, 2 lượt gửi xe miễn phí/tháng",
   },
 ]);
-export type Notice = { id: string; title: string; body: string; audience: string; at: string };
-export const noticesStore = createStore<Notice[]>([
-  {
-    id: "N1",
-    title: "Điều chỉnh giờ chạy dịp lễ",
-    body: "Tăng chuyến đến 23:00 ngày 2/9.",
-    audience: "Tất cả",
-    at: "2026-08-30 09:00",
-  },
-  {
-    id: "N2",
-    title: "Bảo trì thang cuốn ga Ba Son",
-    body: "Thang cuốn lối B tạm dừng 2 ngày.",
-    audience: "Hành khách",
-    at: "2026-10-05 07:30",
-  },
-]);
-
 export type Txn = {
   id: string;
   at: string;

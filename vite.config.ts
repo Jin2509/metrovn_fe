@@ -9,7 +9,6 @@ export default defineConfig({
     port: 3000,
   },
   resolve: {
-    // Alias "@/*" lấy từ tsconfig.json
     tsconfigPaths: true,
   },
   plugins: [

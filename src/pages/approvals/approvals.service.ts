@@ -1,12 +1,13 @@
-import {
-  approvalsStore,
-  logAction,
-  operationConfigsStore,
-  promosStore,
-  type Approval,
-} from "@/mocks/admin";
+import { approvalsStore, logAction, promosStore, type Approval } from "@/mocks/admin";
 import { getActorName } from "@/lib/auth/session.store";
+import {
+  applyLineOrderApproval,
+  applyStationApproval,
+  type LineApprovalPayload,
+  type StationApprovalPayload,
+} from "@/lib/network";
 import type { ApprovalDecisionStatus } from "@/pages/approvals/approvals.types";
+import { applyOperationDecision } from "@/pages/trains/trains.service";
 
 export function applyApprovalDecision(
   approval: Approval,
@@ -21,20 +22,15 @@ export function applyApprovalDecision(
     ),
   );
 
-  if (approval.type === "OPERATION")
-    operationConfigsStore.set((configs) =>
-      configs.map((config) =>
-        config.status === "PENDING"
-          ? {
-              ...config,
-              status: status === "APPROVED" ? "ACTIVE" : "DRAFT",
-              approvedBy: status === "APPROVED" ? getActorName() : "",
-            }
-          : status === "APPROVED" && config.status === "ACTIVE"
-            ? { ...config, status: "INACTIVE" }
-            : config,
-      ),
-    );
+  if (approval.type === "OPERATION") applyOperationDecision(status === "APPROVED", getActorName());
+
+  // Ga và tuyến: Admin chỉ đề xuất (xem lib/network.ts); dữ liệu chỉ thực sự được ghi ở đây,
+  // và chỉ khi Manager chọn "Phê duyệt". Từ chối thì không có gì thay đổi trong hệ thống.
+  if (approval.type === "STATION" && status === "APPROVED")
+    applyStationApproval(approval.payload as StationApprovalPayload);
+
+  if (approval.type === "LINE" && status === "APPROVED")
+    applyLineOrderApproval(approval.payload as LineApprovalPayload);
 
   if (approval.type === "PROMOTION")
     promosStore.set((promotions) =>

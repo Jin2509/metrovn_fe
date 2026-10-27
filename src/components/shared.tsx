@@ -37,11 +37,15 @@ const statusMap: Record<string, [string, string]> = {
   MAINTENANCE: ["Bảo trì", "bg-accent/20 text-accent-foreground"],
   RECONCILED: ["Đã đối soát", "bg-success/15 text-success"],
   UNRECONCILED: ["Chưa đối soát", "bg-muted text-muted-foreground"],
+  SCHEDULED: ["Đã lên lịch", "bg-primary/15 text-primary"],
+  // Thông báo & chatbot
+  ADDED: ["Đã thêm vào kho tri thức", "bg-success/15 text-success"],
+  IGNORED: ["Bỏ qua", "bg-muted text-muted-foreground"],
 };
 export function StatusBadge({ s, label }: { s: string; label?: string }) {
   const [l, c] = statusMap[s] ?? [s, "bg-muted"];
   return (
-    <Badge variant="outline" className={cn("border-transparent font-medium", c)}>
+    <Badge variant="outline" className={cn("whitespace-nowrap border-transparent font-medium", c)}>
       {label ?? l}
     </Badge>
   );

@@ -8,10 +8,11 @@ import {
   Scripts,
   type ErrorComponentProps,
 } from "@tanstack/react-router";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 
 import { AuthGate } from "@/components/auth/AuthGate";
 import { Toaster } from "@/components/ui/sonner";
+import { initTheme } from "@/lib/theme";
 import appCss from "../styles.css?url";
 
 function NotFoundComponent() {
@@ -115,6 +116,7 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  useEffect(() => initTheme(), []);
 
   return (
     <QueryClientProvider client={queryClient}>

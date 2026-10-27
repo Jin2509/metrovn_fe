@@ -3,12 +3,14 @@ import type { OperationConfig } from "@/pages/policies/policies.types";
 
 export function OperationHoursSection({ operation }: { operation: OperationConfig | undefined }) {
   return (
-    <Section title="Giờ vận hành">
+    <Section title="Cấu hình vận hành đang áp dụng">
       <p className="text-sm">
         {operation ? (
           <>
-            Phiên bản <b>{operation.version}</b>: {operation.hours} · giãn cách {operation.headway}{" "}
-            · duyệt bởi {operation.approvedBy}
+            Phiên bản <b>v{operation.version}</b>: chạy {operation.startTime} – {operation.endTime}{" "}
+            · giãn cách {operation.headwayMinutes} phút · {operation.numberOfTrains} đoàn tàu · hiệu
+            lực từ {operation.effectiveFrom.split("-").reverse().join("/")} · duyệt bởi{" "}
+            {operation.approvedBy ?? "—"}
           </>
         ) : (
           "Chưa có cấu hình hiệu lực"

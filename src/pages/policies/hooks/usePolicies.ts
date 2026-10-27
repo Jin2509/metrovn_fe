@@ -1,11 +1,11 @@
 import {
   approvalsStore,
   distancePricesStore,
-  operationConfigsStore,
   parkingPricesStore,
   ticketTypesStore,
   tiersStore,
 } from "@/mocks/admin";
+import { operationConfigsStore } from "@/mocks/operations";
 
 export function usePolicies() {
   const prices = distancePricesStore.use();

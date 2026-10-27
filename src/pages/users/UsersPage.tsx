@@ -1,4 +1,4 @@
-import { MapPinned, Plus, Users } from "lucide-react";
+import { MapPinned, Plus, UserRound, Users } from "lucide-react";
 import { AppShell, PageTabs } from "@/components/app-shell";
 import { ReasonDialog, Section } from "@/components/shared";
 import { Button } from "@/components/ui/button";
@@ -9,31 +9,48 @@ import { UserFilters } from "@/pages/users/components/UserFilters";
 import { UserPasswordResetDialog } from "@/pages/users/components/UserPasswordResetDialog";
 import { UsersTable } from "@/pages/users/components/UsersTable";
 import { useUsers } from "@/pages/users/hooks/useUsers";
+import { INTERNAL_ROLES } from "@/pages/users/users.constants";
+import type { UserScope } from "@/pages/users/users.types";
 
-function AccountsPanel() {
-  const users = useUsers();
+const SCOPE_TEXT: Record<UserScope, { title: string; description: string }> = {
+  internal: {
+    title: "Nhân sự nội bộ",
+    description: "Manager, Kế toán và nhân viên ga. Tạo tài khoản mới cần Manager duyệt.",
+  },
+  passenger: {
+    title: "Tài khoản hành khách",
+    description: "Người dùng app đặt vé. Khóa tài khoản khi có gian lận hoặc theo yêu cầu.",
+  },
+};
+
+function AccountsPanel({ scope }: { scope: UserScope }) {
+  const users = useUsers(scope);
+  const text = SCOPE_TEXT[scope];
 
   return (
     <>
       <Section
-        title="Danh sách tài khoản"
-        description="Tài khoản nội bộ: Admin, Manager, Kế toán và nhân viên ga"
+        title={text.title}
+        description={`${text.description} ${users.total} tài khoản, ${users.lockedCount} đang khóa.`}
         action={
-          <Button onClick={() => users.setCreateOpen(true)}>
-            <Plus className="h-4 w-4" />
-            Tạo tài khoản
-          </Button>
+          scope === "internal" && (
+            <Button onClick={() => users.setCreateOpen(true)}>
+              <Plus className="h-4 w-4" />
+              Tạo tài khoản
+            </Button>
+          )
         }
       >
         <UserFilters
           query={users.query}
           role={users.role}
+          roles={scope === "internal" ? INTERNAL_ROLES : undefined}
           status={users.status}
           onQueryChange={users.setQuery}
           onRoleChange={users.setRole}
           onStatusChange={users.setStatus}
         />
-        <UsersTable rows={users.rows} onSelect={users.setSelectedUser} />
+        <UsersTable rows={users.rows} scope={scope} onSelect={users.setSelectedUser} />
       </Section>
       <UserDetailsSheet
         user={users.selectedUser}
@@ -73,7 +90,18 @@ export function UsersPage() {
     <AppShell title="Tài khoản & phân công">
       <PageTabs
         tabs={[
-          { value: "accounts", label: "Tài khoản", icon: Users, content: <AccountsPanel /> },
+          {
+            value: "accounts",
+            label: "Nhân sự nội bộ",
+            icon: Users,
+            content: <AccountsPanel scope="internal" />,
+          },
+          {
+            value: "passengers",
+            label: "Hành khách",
+            icon: UserRound,
+            content: <AccountsPanel scope="passenger" />,
+          },
           {
             value: "assignments",
             label: "Phân công ga",

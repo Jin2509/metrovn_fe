@@ -7,6 +7,8 @@ export type SessionUser = {
   name: string;
   email: string;
   role: Role;
+  /** Số điện thoại (users.numberphone) — không bắt buộc. */
+  phone?: string;
 };
 
 export type Session = {

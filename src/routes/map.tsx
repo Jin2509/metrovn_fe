@@ -4,7 +4,10 @@ import { seo } from "@/lib/seo";
 import { MapPage } from "@/pages/map";
 
 export const Route = createFileRoute("/map")({
-  head: seo("Bản đồ & xe buýt", "Bản đồ tuyến, ga Metro và các tuyến xe buýt kết nối."),
+  head: seo(
+    "Bản đồ hệ thống",
+    "Tuyến, ga, thông báo vận hành đang hiệu lực, vị trí tàu mô phỏng và xe buýt kết nối.",
+  ),
   validateSearch: tabSearch,
   component: MapPage,
 });

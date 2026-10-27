@@ -33,9 +33,11 @@ export function UserDetailsSheet({
                 <span className="text-muted-foreground">Vai trò:</span>{" "}
                 {USER_ROLE_LABELS[user.role]}
               </p>
-              <p>
-                <span className="text-muted-foreground">Ga phụ trách:</span> {stationName}
-              </p>
+              {user.role !== "PASSENGER" && (
+                <p>
+                  <span className="text-muted-foreground">Ga phụ trách:</span> {stationName}
+                </p>
+              )}
               <p className="flex items-center gap-2">
                 <span className="text-muted-foreground">Trạng thái:</span>{" "}
                 <StatusBadge s={user.status} />
@@ -43,7 +45,7 @@ export function UserDetailsSheet({
               {user.lockReason && <p className="text-destructive">Lý do khóa: {user.lockReason}</p>}
               <div className="flex flex-wrap gap-2 pt-4">
                 <Button variant="outline" onClick={onResetPassword}>
-                  Đặt lại mật khẩu
+                  {user.role === "PASSENGER" ? "Gửi liên kết đặt lại mật khẩu" : "Đặt lại mật khẩu"}
                 </Button>
                 {user.status === "LOCKED" ? (
                   <Button onClick={onLock}>Mở quyền</Button>

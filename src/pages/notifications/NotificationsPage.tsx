@@ -1,17 +1,30 @@
-import { AppShell } from "@/components/app-shell";
-import { NotificationComposer } from "@/pages/notifications/components/NotificationComposer";
-import { NotificationHistory } from "@/pages/notifications/components/NotificationHistory";
-import { useNotifications } from "@/pages/notifications/hooks/useNotifications";
+import { useNavigate } from "@tanstack/react-router";
+import { History as HistoryIcon, PenSquare } from "lucide-react";
+import { AppShell, PageTabs } from "@/components/app-shell";
+import { Composer } from "@/pages/notifications/components/Composer";
+import { History } from "@/pages/notifications/components/History";
 
 export function NotificationsPage() {
-  const { notices, draft, error, setDraft, send } = useNotifications();
-
+  const navigate = useNavigate();
+  const go = (tab?: string) => navigate({ to: "/notifications", search: { tab } });
   return (
     <AppShell title="Thông báo vận hành">
-      <div className="grid gap-6 lg:grid-cols-[400px_1fr]">
-        <NotificationComposer draft={draft} error={error} onDraftChange={setDraft} onSend={send} />
-        <NotificationHistory notices={notices} />
-      </div>
+      <PageTabs
+        tabs={[
+          {
+            value: "compose",
+            label: "Soạn thông báo",
+            icon: PenSquare,
+            content: <Composer onDone={() => go("history")} />,
+          },
+          {
+            value: "history",
+            label: "Lịch sử",
+            icon: HistoryIcon,
+            content: <History onEditDraft={() => go()} />,
+          },
+        ]}
+      />
     </AppShell>
   );
 }

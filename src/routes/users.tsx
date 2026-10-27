@@ -6,7 +6,7 @@ import { UsersPage } from "@/pages/users";
 export const Route = createFileRoute("/users")({
   head: seo(
     "Tài khoản & phân công",
-    "Quản lý tài khoản nội bộ, khóa/mở, đặt lại mật khẩu và phân công nhân viên theo ga.",
+    "Quản lý nhân sự nội bộ, tài khoản hành khách và phân công nhân viên theo ga.",
   ),
   validateSearch: tabSearch,
   component: UsersPage,

@@ -13,7 +13,11 @@ export function RoleBadge({ role, className }: { role: Role; className?: string 
   return (
     <Badge
       variant="outline"
-      className={cn("border-transparent font-medium", roleStyles[role], className)}
+      className={cn(
+        "whitespace-nowrap border-transparent font-medium",
+        roleStyles[role],
+        className,
+      )}
     >
       {ROLE_LABELS[role]}
     </Badge>

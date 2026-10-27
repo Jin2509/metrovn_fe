@@ -1,4 +1,8 @@
-import { operationConfigsStore, trains } from "@/mocks/admin";
+import type { OperationConfig, Train } from "@/mocks/operations";
 
-export type Train = (typeof trains)[number];
-export type OperationConfig = ReturnType<typeof operationConfigsStore.use>[number];
+export type { OperationConfig, Train };
+
+export type ConfigDraft = Omit<
+  OperationConfig,
+  "id" | "version" | "status" | "createdBy" | "approvedBy"
+>;

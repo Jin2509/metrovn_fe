@@ -9,7 +9,9 @@ import {
   updateUserAccess,
   validateUserAccountDraft,
 } from "@/pages/users/users.service";
+import { isInScope } from "@/pages/users/users.constants";
 import type {
+  UserScope,
   UserCreateDraft,
   UserCreateErrors,
   UserRoleFilter,
@@ -18,8 +20,9 @@ import type {
 
 const EMPTY_USER_DRAFT: UserCreateDraft = { name: "", email: "", role: "STAFF" };
 
-export function useUsers() {
-  const users = usersStore.use();
+export function useUsers(scope: UserScope) {
+  const allUsers = usersStore.use();
+  const users = allUsers.filter((user) => isInScope(user, scope));
   const [query, setQuery] = useState("");
   const [role, setRole] = useState<UserRoleFilter>("ALL");
   const [status, setStatus] = useState<UserStatusFilter>("ALL");
@@ -60,7 +63,7 @@ export function useUsers() {
   const submitCreate = () => {
     const errors = validateUserAccountDraft(
       createDraft,
-      users.map((user) => user.email),
+      allUsers.map((user) => user.email),
     );
     setCreateErrors(errors);
     if (Object.keys(errors).length) return;
@@ -78,6 +81,8 @@ export function useUsers() {
     status,
     setStatus,
     rows,
+    total: users.length,
+    lockedCount: users.filter((user) => user.status === "LOCKED").length,
     selectedUser,
     setSelectedUser,
     selectedStationName,

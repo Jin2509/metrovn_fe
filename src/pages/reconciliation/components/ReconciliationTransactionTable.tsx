@@ -14,16 +14,18 @@ export function ReconciliationTransactionTable({
   rows,
   picked,
   onToggle,
+  readOnly = false,
 }: {
   rows: Txn[];
   picked: Set<string>;
   onToggle: (transactionId: string) => void;
+  readOnly?: boolean;
 }) {
   return (
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead className="w-10" />
+          {!readOnly && <TableHead className="w-10" />}
           <TableHead>Mã GD</TableHead>
           <TableHead>Thời gian</TableHead>
           <TableHead>Cổng</TableHead>
@@ -34,7 +36,10 @@ export function ReconciliationTransactionTable({
       <TableBody>
         {rows.length === 0 && (
           <TableRow>
-            <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
+            <TableCell
+              colSpan={readOnly ? 5 : 6}
+              className="py-10 text-center text-muted-foreground"
+            >
               Không có dữ liệu
             </TableCell>
           </TableRow>
@@ -42,12 +47,14 @@ export function ReconciliationTransactionTable({
         {rows.map((transaction) => (
           <TableRow
             key={transaction.id}
-            onClick={() => onToggle(transaction.id)}
-            className="cursor-pointer"
+            onClick={readOnly ? undefined : () => onToggle(transaction.id)}
+            className={readOnly ? undefined : "cursor-pointer"}
           >
-            <TableCell>
-              <Checkbox checked={picked.has(transaction.id)} />
-            </TableCell>
+            {!readOnly && (
+              <TableCell>
+                <Checkbox checked={picked.has(transaction.id)} />
+              </TableCell>
+            )}
             <TableCell>{transaction.id}</TableCell>
             <TableCell>{transaction.at}</TableCell>
             <TableCell>{transaction.gateway}</TableCell>

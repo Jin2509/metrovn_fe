@@ -5,6 +5,12 @@ import { getVisibleNavGroups } from "@/components/layout/nav.config";
 import { useAuth } from "@/lib/auth";
 import { approvalsStore } from "@/mocks/admin";
 
+/** Số việc đang chờ xử lý hiển thị cạnh mục menu tương ứng. */
+function useNavBadges(): Partial<Record<string, number>> {
+  const pending = approvalsStore.use().filter((a) => a.status === "PENDING").length;
+  return { "/approvals": pending };
+}
+
 function SidebarBrand() {
   return (
     <div className="flex items-center gap-3 px-5 py-5">
@@ -21,7 +27,7 @@ function SidebarBrand() {
 
 function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const { role } = useAuth();
-  const pending = approvalsStore.use().filter((a) => a.status === "PENDING").length;
+  const badges = useNavBadges();
   const groups = role ? getVisibleNavGroups(role) : [];
 
   return (
@@ -45,9 +51,9 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
             >
               <n.icon className="h-4 w-4 shrink-0 opacity-80 group-hover:opacity-100" />
               <span className="flex-1 truncate">{n.label}</span>
-              {n.to === "/approvals" && pending > 0 && (
+              {!!badges[n.to] && (
                 <span className="rounded-full bg-accent px-1.5 text-xs font-semibold text-accent-foreground">
-                  {pending}
+                  {badges[n.to]}
                 </span>
               )}
             </Link>
@@ -64,7 +70,7 @@ export function SidebarPanel({ onNavigate }: { onNavigate?: () => void }) {
     <div className="flex h-full flex-col">
       <SidebarBrand />
       <SidebarNav onNavigate={onNavigate} />
-      <UserCard />
+      <UserCard onNavigate={onNavigate} />
     </div>
   );
 }

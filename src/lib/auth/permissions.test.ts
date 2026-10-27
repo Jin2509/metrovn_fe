@@ -5,6 +5,8 @@ import { describe, expect, it } from "vitest";
 import { navGroups } from "@/components/layout/nav.config";
 import { routeTree } from "@/routeTree.gen";
 import {
+  ACTION_ACCESS,
+  ACTION_LABELS,
   PUBLIC_PATHS,
   ROLES,
   ROUTE_ACCESS,
@@ -52,11 +54,24 @@ describe("canAccessRoute", () => {
     expect(canAccessRoute("ADMIN", "/period-closing")).toBe(false);
   });
 
-  it("Manager: chỉ phê duyệt, chính sách và doanh thu", () => {
+  it("Manager: phê duyệt, chính sách, doanh thu và theo dõi chatbot", () => {
     expect(canAccessRoute("MANAGER", "/approvals")).toBe(true);
     expect(canAccessRoute("MANAGER", "/revenue")).toBe(true);
+    expect(canAccessRoute("MANAGER", "/chatbot")).toBe(true);
     expect(canAccessRoute("MANAGER", "/users")).toBe(false);
+    expect(canAccessRoute("MANAGER", "/settings")).toBe(false);
     expect(canAccessRoute("MANAGER", "/transactions")).toBe(false);
+  });
+
+  it("chatbot: Admin quản trị, Manager theo dõi, Kế toán không vào", () => {
+    expect(canAccessRoute("ADMIN", "/chatbot")).toBe(true);
+    expect(canAccessRoute("ACCOUNTANT", "/chatbot")).toBe(false);
+  });
+
+  it("cấu hình hệ thống chỉ Admin; cài đặt tài khoản cho mọi vai trò", () => {
+    expect(canAccessRoute("ADMIN", "/settings")).toBe(true);
+    expect(canAccessRoute("ACCOUNTANT", "/settings")).toBe(false);
+    for (const role of ROLES) expect(canAccessRoute(role, "/profile"), role).toBe(true);
   });
 
   it("Kế toán: giao dịch, đối soát, doanh thu, chốt kỳ", () => {
@@ -91,6 +106,20 @@ describe("can (thao tác)", () => {
     expect(can("ADMIN", "stats.hourlyFlow")).toBe(true);
     expect(can("MANAGER", "stats.hourlyFlow")).toBe(false);
     expect(can("ACCOUNTANT", "stats.hourlyFlow")).toBe(false);
+  });
+
+  it("chỉ Admin đọc hội thoại và sửa kiến thức/cấu hình chatbot", () => {
+    for (const action of ["chatbot.conversations", "chatbot.manage"] as const) {
+      expect(can("ADMIN", action), action).toBe(true);
+      expect(can("MANAGER", action), action).toBe(false);
+      expect(can("ACCOUNTANT", action), action).toBe(false);
+    }
+  });
+
+  it("mọi thao tác đều có mô tả cho bảng phân quyền", () => {
+    for (const action of Object.keys(ACTION_ACCESS)) {
+      expect(ACTION_LABELS, action).toHaveProperty([action]);
+    }
   });
 });
 
