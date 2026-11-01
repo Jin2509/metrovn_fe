@@ -1,36 +1,39 @@
+import { format, parseISO } from "date-fns";
 import { DataTable, StatusBadge, type Col } from "@/components/shared";
-import type { User } from "@/mocks/admin";
-import { USER_ROLE_LABELS } from "@/pages/users/users.constants";
+import type { AdminUser } from "@/lib/api";
+import { userRoleLabel } from "@/pages/users/users.constants";
 import type { UserScope } from "@/pages/users/users.types";
 
 export function UsersTable({
   rows,
   scope,
+  loading,
   onSelect,
 }: {
-  rows: User[];
+  rows: AdminUser[];
   scope: UserScope;
-  onSelect: (user: User) => void;
+  loading: boolean;
+  onSelect: (user: AdminUser) => void;
 }) {
-  const cols: Col<User>[] = [
-    { h: "Mã", c: (user) => user.id },
-    { h: "Họ tên", c: (user) => <span className="font-medium">{user.name}</span> },
+  const cols: Col<AdminUser>[] = [
+    { h: "Họ tên", c: (user) => <span className="font-medium">{user.fullName}</span> },
     { h: "Email", c: (user) => user.email },
     ...(scope === "internal"
-      ? [{ h: "Vai trò", c: (user: User) => USER_ROLE_LABELS[user.role] }]
+      ? [{ h: "Vai trò", c: (user: AdminUser) => user.roles.map(userRoleLabel).join(", ") }]
       : []),
     {
       h: scope === "internal" ? "Ngày tạo" : "Ngày đăng ký",
-      c: (user) => user.createdAt.split("-").reverse().join("/"),
+      c: (user) => format(parseISO(user.createdAt), "dd/MM/yyyy"),
     },
     { h: "Trạng thái", c: (user) => <StatusBadge s={user.status} /> },
   ];
+  const empty = scope === "internal" ? "Không có nhân sự phù hợp" : "Không có hành khách phù hợp";
   return (
     <DataTable
       rows={rows}
       onRow={onSelect}
       cols={cols}
-      empty={scope === "internal" ? "Không có nhân sự phù hợp" : "Không có hành khách phù hợp"}
+      empty={loading ? "Đang tải dữ liệu…" : empty}
     />
   );
 }

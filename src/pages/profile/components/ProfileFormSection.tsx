@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useProfileForm } from "@/pages/profile/hooks/useProfile";
 
-/** Sửa các trường hồ sơ được phép (AUTH-05): họ tên, số điện thoại. Email và vai trò do Admin quản lý. */
+/** Sửa các trường hồ sơ được phép (AUTH-05): họ tên. Email và vai trò do Admin quản lý. */
 export function ProfileFormSection() {
   const f = useProfileForm();
   return (
@@ -25,17 +25,7 @@ export function ProfileFormSection() {
           />
           {f.errors.name && <p className="text-xs text-destructive">{f.errors.name}</p>}
         </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="pf-phone">Số điện thoại</Label>
-          <Input
-            id="pf-phone"
-            inputMode="tel"
-            value={f.draft.phone}
-            onChange={(e) => f.setDraft({ ...f.draft, phone: e.target.value })}
-          />
-          {f.errors.phone && <p className="text-xs text-destructive">{f.errors.phone}</p>}
-        </div>
-        <Button type="submit" disabled={!f.dirty}>
+        <Button type="submit" disabled={!f.dirty || f.pending}>
           Lưu thông tin
         </Button>
       </form>

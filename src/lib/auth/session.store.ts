@@ -1,9 +1,15 @@
+import { parseISO } from "date-fns";
 import { createStore } from "@/lib/store";
 import { isRole } from "./permissions";
-import type { AuthState, Session, SessionUser } from "./auth.types";
+import type { AuthState, Session, SessionTokens, SessionUser } from "./auth.types";
 
 const STORAGE_KEY = "metro.session.v1";
-export const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
+
+type TokenPayload = {
+  accessToken: string;
+  refreshToken: string;
+  refreshTokenExpiresAt: string;
+};
 
 /**
  * Trạng thái đăng nhập. Khởi tạo là "loading" cả ở server lẫn lần render đầu tiên ở client
@@ -12,6 +18,9 @@ export const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
 export const authStore = createStore<AuthState>({ status: "loading", user: null });
 
 const ANONYMOUS: AuthState = { status: "anonymous", user: null };
+
+/** Phiên khi storage bị chặn: chỉ sống trong bộ nhớ của tab này. */
+let memorySession: Session | null = null;
 
 function storages(): Storage[] {
   try {
@@ -32,7 +41,9 @@ function parseSession(raw: string | null): Session | null {
       typeof u.name !== "string" ||
       typeof u.email !== "string" ||
       !isRole(u.role) ||
-      typeof data.issuedAt !== "number" ||
+      !Array.isArray(u.permissions) ||
+      typeof data.accessToken !== "string" ||
+      typeof data.refreshToken !== "string" ||
       typeof data.expiresAt !== "number" ||
       data.expiresAt <= Date.now()
     )
@@ -52,20 +63,37 @@ function readSession(): Session | null {
       /* storage bị chặn — coi như chưa đăng nhập */
     }
   }
-  return null;
+  return memorySession && memorySession.expiresAt > Date.now() ? memorySession : null;
 }
 
 function writeSession(session: Session, remember: boolean) {
   clearStoredSession();
   try {
     const [tab, persistent] = storages();
-    (remember ? persistent : tab)?.setItem(STORAGE_KEY, JSON.stringify(session));
+    (remember ? persistent : tab).setItem(STORAGE_KEY, JSON.stringify(session));
   } catch {
-    /* không ghi được thì phiên chỉ sống trong bộ nhớ */
+    memorySession = session; // không ghi được thì phiên chỉ sống trong bộ nhớ
   }
 }
 
+/** Sửa phiên hiện tại, giữ nguyên nơi lưu phiên. */
+function patchSession(patch: Partial<Session>): Session | null {
+  const current = readSession();
+  if (!current) return null;
+  const next = { ...current, ...patch };
+  if (memorySession) memorySession = next;
+  for (const s of storages()) {
+    try {
+      if (parseSession(s.getItem(STORAGE_KEY))) s.setItem(STORAGE_KEY, JSON.stringify(next));
+    } catch {
+      /* ignore */
+    }
+  }
+  return next;
+}
+
 function clearStoredSession() {
+  memorySession = null;
   for (const s of storages()) {
     try {
       s.removeItem(STORAGE_KEY);
@@ -79,16 +107,16 @@ function clearStoredSession() {
 let expiryTimer: ReturnType<typeof setTimeout> | undefined;
 const expiryHandlers = new Set<() => void>();
 
+/** Phiên hết hạn hoặc bị thu hồi: xoá token, báo cho người dùng và về màn đăng nhập. */
+export function expireSession() {
+  endSession("expired");
+  expiryHandlers.forEach((fn) => fn());
+}
+
 function scheduleExpiry(session: Session | null) {
   clearTimeout(expiryTimer);
   if (!session) return;
-  expiryTimer = setTimeout(
-    () => {
-      endSession("expired");
-      expiryHandlers.forEach((fn) => fn());
-    },
-    Math.max(0, session.expiresAt - Date.now()),
-  );
+  expiryTimer = setTimeout(expireSession, Math.max(0, session.expiresAt - Date.now()));
 }
 
 /** Đọc lại phiên từ storage (gọi một lần khi app mount, và khi tab khác đăng nhập/đăng xuất). */
@@ -98,9 +126,15 @@ export function hydrateSession() {
   scheduleExpiry(session);
 }
 
-export function startSession(user: SessionUser, remember: boolean) {
-  const issuedAt = Date.now();
-  const session: Session = { user, issuedAt, expiresAt: issuedAt + SESSION_TTL_MS };
+/** Phiên sống theo refresh token (14 ngày, tính lại sau mỗi lần refresh). */
+const toTokenFields = (tokens: TokenPayload): SessionTokens & Pick<Session, "expiresAt"> => ({
+  accessToken: tokens.accessToken,
+  refreshToken: tokens.refreshToken,
+  expiresAt: parseISO(tokens.refreshTokenExpiresAt).getTime(),
+});
+
+export function startSession(user: SessionUser, tokens: TokenPayload, remember: boolean) {
+  const session: Session = { user, ...toTokenFields(tokens) };
   writeSession(session, remember);
   authStore.set(() => ({ status: "authenticated", user }));
   scheduleExpiry(session);
@@ -110,6 +144,17 @@ export function endSession(endedBy: "logout" | "expired" = "logout") {
   clearStoredSession();
   clearTimeout(expiryTimer);
   authStore.set(() => ({ ...ANONYMOUS, endedBy }));
+}
+
+/** Token của phiên hiện tại. Luôn đọc từ storage để thấy token mới mà tab khác vừa lưu. */
+export function getSessionTokens(): SessionTokens | null {
+  const session = readSession();
+  return session && { accessToken: session.accessToken, refreshToken: session.refreshToken };
+}
+
+/** Lưu cặp token mới sau khi refresh. Bỏ qua nếu phiên đã kết thúc trong lúc chờ (vd. đăng xuất). */
+export function updateSessionTokens(tokens: TokenPayload) {
+  scheduleExpiry(patchSession(toTokenFields(tokens)));
 }
 
 /**
@@ -137,19 +182,12 @@ export function watchSession(onExpire: () => void) {
   };
 }
 
-/** Cập nhật thông tin người dùng trong phiên hiện tại (sau khi sửa hồ sơ), giữ nguyên nơi lưu phiên. */
-export function updateSessionUser(patch: Partial<Pick<SessionUser, "name" | "phone">>) {
+/** Cập nhật thông tin người dùng trong phiên hiện tại, giữ nguyên nơi lưu phiên. */
+export function updateSessionUser(patch: Partial<SessionUser>) {
   const current = authStore.get().user;
   if (!current) return;
   const user = { ...current, ...patch };
-  for (const s of storages()) {
-    try {
-      const session = parseSession(s.getItem(STORAGE_KEY));
-      if (session) s.setItem(STORAGE_KEY, JSON.stringify({ ...session, user }));
-    } catch {
-      /* ignore */
-    }
-  }
+  patchSession({ user });
   authStore.set((state) => ({ ...state, user }));
 }
 

@@ -267,7 +267,7 @@ export function Composer({ onDone }: { onDone: () => void }) {
             <Button variant="outline" onClick={c.save}>
               Lưu nháp
             </Button>
-            <Button onClick={c.send}>
+            <Button onClick={c.send} disabled={c.sending}>
               <Send className="h-4 w-4" />
               Gửi
             </Button>

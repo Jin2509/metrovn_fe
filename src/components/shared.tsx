@@ -29,6 +29,7 @@ const statusMap: Record<string, [string, string]> = {
   DRAFT: ["Nháp", "bg-secondary text-secondary-foreground"],
   EXPIRED: ["Hết hạn", "bg-muted text-muted-foreground"],
   PENDING: ["Chờ duyệt", "bg-accent/20 text-accent-foreground"],
+  PENDING_VERIFICATION: ["Chưa xác thực", "bg-accent/20 text-accent-foreground"],
   APPROVED: ["Đã duyệt", "bg-success/15 text-success"],
   REJECTED: ["Từ chối", "bg-destructive/15 text-destructive"],
   SUCCESS: ["Thành công", "bg-success/15 text-success"],

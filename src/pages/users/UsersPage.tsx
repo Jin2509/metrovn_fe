@@ -1,6 +1,7 @@
-import { MapPinned, Plus, UserRound, Users } from "lucide-react";
+import { AlertCircle, MapPinned, Plus, UserRound, Users } from "lucide-react";
 import { AppShell, PageTabs } from "@/components/app-shell";
 import { ReasonDialog, Section } from "@/components/shared";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { AssignmentsPanel } from "@/pages/assignments";
 import { UserCreateDialog } from "@/pages/users/components/UserCreateDialog";
@@ -9,13 +10,12 @@ import { UserFilters } from "@/pages/users/components/UserFilters";
 import { UserPasswordResetDialog } from "@/pages/users/components/UserPasswordResetDialog";
 import { UsersTable } from "@/pages/users/components/UsersTable";
 import { useUsers } from "@/pages/users/hooks/useUsers";
-import { INTERNAL_ROLES } from "@/pages/users/users.constants";
 import type { UserScope } from "@/pages/users/users.types";
 
 const SCOPE_TEXT: Record<UserScope, { title: string; description: string }> = {
   internal: {
     title: "Nhân sự nội bộ",
-    description: "Manager, Kế toán và nhân viên ga. Tạo tài khoản mới cần Manager duyệt.",
+    description: "Admin, Manager, Kế toán và nhân viên ga.",
   },
   passenger: {
     title: "Tài khoản hành khách",
@@ -41,23 +41,41 @@ function AccountsPanel({ scope }: { scope: UserScope }) {
           )
         }
       >
+        {users.loadError && (
+          <Alert variant="destructive" className="mb-3">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="flex flex-wrap items-center gap-3">
+              {users.loadError}
+              <Button size="sm" variant="outline" onClick={users.reload}>
+                Thử lại
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
         <UserFilters
           query={users.query}
           role={users.role}
-          roles={scope === "internal" ? INTERNAL_ROLES : undefined}
+          roles={scope === "internal" ? users.roleOptions.map((r) => r.code) : undefined}
           status={users.status}
           onQueryChange={users.setQuery}
           onRoleChange={users.setRole}
           onStatusChange={users.setStatus}
         />
-        <UsersTable rows={users.rows} scope={scope} onSelect={users.setSelectedUser} />
+        <UsersTable
+          rows={users.rows}
+          scope={scope}
+          loading={users.loading}
+          onSelect={users.setSelectedUser}
+        />
       </Section>
       <UserDetailsSheet
         user={users.selectedUser}
-        stationName={users.selectedStationName}
+        roleOptions={users.roleOptions}
+        pending={users.pending}
         onClose={() => users.setSelectedUser(null)}
         onLock={() => users.setLockOpen(true)}
         onResetPassword={() => users.setResetOpen(true)}
+        onSaveRoles={users.saveRoles}
       />
       <ReasonDialog
         open={users.lockOpen}
@@ -70,6 +88,7 @@ function AccountsPanel({ scope }: { scope: UserScope }) {
       <UserPasswordResetDialog
         open={users.resetOpen}
         email={users.selectedUser?.email}
+        pending={users.pending}
         onOpenChange={users.setResetOpen}
         onConfirm={users.confirmPasswordReset}
       />
@@ -77,6 +96,8 @@ function AccountsPanel({ scope }: { scope: UserScope }) {
         open={users.createOpen}
         draft={users.createDraft}
         errors={users.createErrors}
+        roleOptions={users.roleOptions}
+        pending={users.pending}
         onClose={() => users.setCreateOpen(false)}
         onDraftChange={users.setCreateDraft}
         onSubmit={users.submitCreate}

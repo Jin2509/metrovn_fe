@@ -2,6 +2,7 @@ import { useRouterState } from "@tanstack/react-router";
 import { ChevronRight } from "lucide-react";
 import type { ReactNode } from "react";
 import { MobileNav } from "@/components/layout/MobileNav";
+import { NotificationBell } from "@/components/layout/NotificationBell";
 import { findNavGroup, findNavItem } from "@/components/layout/nav.config";
 
 export function Header({
@@ -31,6 +32,7 @@ export function Header({
           {subtitle && <p className="truncate text-sm text-muted-foreground">{subtitle}</p>}
         </div>
         {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+        <NotificationBell />
       </div>
     </header>
   );

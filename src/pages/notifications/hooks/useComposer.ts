@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { ApiError } from "@/lib/api";
 import { usersStore } from "@/mocks/admin";
 import type { AnnouncementAudience, AnnouncementChannel } from "@/mocks/announcements";
 import { CHANNELS_BY_AUDIENCE } from "@/pages/notifications/notifications.constants";
 import {
+  deliverToBackend,
   draftPrefillStore,
   emptyDraft,
+  isScheduledForLater,
   publish,
   recipientCount,
   saveDraft,
@@ -18,6 +21,7 @@ export function useComposer(onDone: () => void) {
   const [draft, setDraft] = useState<AnnouncementDraft>(() => emptyDraft());
   const [editingId, setEditingId] = useState<string | undefined>();
   const [submitted, setSubmitted] = useState(false);
+  const [sending, setSending] = useState(false);
 
   // Mở từ Bản đồ / Ga / lịch sử (sửa bản nháp): lấy dữ liệu đã chuẩn bị rồi xóa để không lặp lại.
   const prefill = draftPrefillStore.use();
@@ -51,18 +55,28 @@ export function useComposer(onDone: () => void) {
     setSubmitted(false);
   };
 
-  const send = () => {
+  const send = async () => {
     setSubmitted(true);
-    if (Object.keys(errors).length) return;
-    const record = publish(draft, editingId);
-    const d = record.delivery!;
-    if (d.failed)
-      toast.warning(
-        `Đã gửi ${d.sent}/${d.recipients}, ${d.failed} người nhận lỗi. Xem chi tiết để gửi lại.`,
+    if (sending || Object.keys(errors).length) return;
+    if (isScheduledForLater(draft))
+      return void toast.error("Backend chưa hỗ trợ hẹn giờ, hãy đặt thời điểm bắt đầu là hiện tại");
+    setSending(true);
+    try {
+      const delivered = await deliverToBackend(draft);
+      if (!delivered) return void toast.error("Không có tài khoản nào trong nhóm nhận");
+      publish(draft, editingId, undefined, delivered);
+      toast.success(`Đã gửi thông báo tới ${delivered} người nhận`);
+      reset();
+      onDone();
+    } catch (error) {
+      toast.error(
+        error instanceof ApiError && error.status === 403
+          ? "Bạn không có quyền gửi thông báo"
+          : "Không gửi được thông báo, vui lòng thử lại",
       );
-    else toast.success("Gửi thông báo thành công");
-    reset();
-    onDone();
+    } finally {
+      setSending(false);
+    }
   };
 
   const save = () => {
@@ -86,6 +100,7 @@ export function useComposer(onDone: () => void) {
     errors,
     showErrors: submitted,
     send,
+    sending,
     save,
     reset,
   };

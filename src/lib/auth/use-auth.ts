@@ -10,5 +10,7 @@ export function useAuth() {
     role: user?.role ?? null,
     isAuthenticated: status === "authenticated",
     can: (action: Action) => !!user && can(user.role, action),
+    /** Kiểm tra theo mã quyền của backend (vd. "USER_MANAGE"). */
+    hasPermission: (permission: string) => !!user && user.permissions.includes(permission),
   };
 }

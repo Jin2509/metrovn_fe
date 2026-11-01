@@ -1,67 +1,235 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { auditStore } from "@/mocks/admin";
-import { DEMO_PASSWORD } from "@/mocks/accounts";
-import { AuthError, login, logout } from "./auth.service";
+import {
+  AuthError,
+  changePassword,
+  login,
+  logout,
+  resolveRole,
+  syncCurrentUser,
+  updateProfile,
+} from "./auth.service";
 import { authStore, hydrateSession } from "./session.store";
 
 const STORAGE_KEY = "metro.session.v1";
+// Hạn 14 ngày như backend, với 6 chữ số lẻ của giây (vd. 2026-11-15T11:32:36.696621Z).
+const FUTURE = new Date(Date.now() + 14 * 24 * 3600 * 1000).toISOString().replace("Z", "621Z");
 
-function reset() {
+const TOKENS = {
+  accessToken: "access-1",
+  tokenType: "Bearer",
+  expiresAt: FUTURE,
+  refreshToken: "refresh-1",
+  refreshTokenExpiresAt: FUTURE,
+};
+
+const me = (patch: Record<string, unknown> = {}) => ({
+  id: "158c41a0",
+  email: "manager@metro.vn",
+  fullName: "Trần Thị Bình",
+  status: "ACTIVE",
+  roles: ["MANAGER"],
+  permissions: ["REPORT_VIEW"],
+  ...patch,
+});
+
+const json = (status: number, body?: unknown) =>
+  new Response(body === undefined ? null : JSON.stringify(body), { status });
+
+const fetchMock = vi.fn<typeof fetch>();
+
+/** Trả lời theo đường dẫn; mặc định 204. */
+function route(handlers: Record<string, (init?: RequestInit) => Response>) {
+  fetchMock.mockImplementation(async (url, init) => {
+    const path = new URL(String(url)).pathname;
+    return handlers[path]?.(init) ?? json(204);
+  });
+}
+
+const calledPaths = () => fetchMock.mock.calls.map(([url]) => new URL(String(url)).pathname);
+
+beforeEach(() => {
   window.localStorage.clear();
   window.sessionStorage.clear();
   hydrateSession();
-}
+  fetchMock.mockReset();
+  vi.stubGlobal("fetch", fetchMock);
+});
 
-beforeEach(reset);
+afterEach(() => vi.unstubAllGlobals());
+
+const loginOk = (patch?: Record<string, unknown>) =>
+  route({
+    "/api/auth/login": () => json(200, TOKENS),
+    "/api/me": () => json(200, me(patch)),
+  });
+
+const input = { email: " Manager@Metro.vn ", password: "Metro@2026", remember: true };
+
+describe("resolveRole", () => {
+  it("chọn vai trò web theo thứ tự ưu tiên, không có thì null", () => {
+    expect(resolveRole(["ACCOUNTANT", "ADMIN"])).toBe("ADMIN");
+    expect(resolveRole(["STAFF", "MANAGER"])).toBe("MANAGER");
+    expect(resolveRole(["PASSENGER"])).toBeNull();
+  });
+});
 
 describe("login", () => {
-  it("đăng nhập đúng: lưu phiên (không kèm mật khẩu) và ghi nhật ký", async () => {
-    const user = await login(
-      { email: " Manager@Metro.vn ", password: DEMO_PASSWORD, remember: true },
-      0,
-    );
+  it("đăng nhập đúng: chuẩn hoá email, lưu phiên kèm token, không lưu mật khẩu", async () => {
+    loginOk();
+    const user = await login(input);
 
     expect(user).toMatchObject({ role: "MANAGER", name: "Trần Thị Bình" });
     expect(authStore.get()).toMatchObject({ status: "authenticated", user: { role: "MANAGER" } });
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({
+      email: "manager@metro.vn",
+      password: "Metro@2026",
+    });
+    const headers = fetchMock.mock.calls[1][1]?.headers as Record<string, string>;
+    expect(headers.Authorization).toBe("Bearer access-1");
 
     const raw = window.localStorage.getItem(STORAGE_KEY) ?? "";
-    expect(raw).toContain("manager@metro.vn");
-    expect(raw).not.toContain(DEMO_PASSWORD);
+    expect(JSON.parse(raw)).toMatchObject({ accessToken: "access-1", refreshToken: "refresh-1" });
+    expect(raw).not.toContain("Metro@2026");
+    expect(JSON.parse(raw).expiresAt).toBeGreaterThan(Date.now() + 13 * 24 * 3600 * 1000);
     expect(auditStore.get()[0]).toMatchObject({ actor: "Trần Thị Bình", action: "Đăng nhập" });
   });
 
   it("không chọn ghi nhớ: chỉ lưu trong sessionStorage", async () => {
-    await login({ email: "admin@metro.vn", password: DEMO_PASSWORD, remember: false }, 0);
+    loginOk();
+    await login({ ...input, remember: false });
 
     expect(window.sessionStorage.getItem(STORAGE_KEY)).not.toBeNull();
     expect(window.localStorage.getItem(STORAGE_KEY)).toBeNull();
   });
 
-  it("sai mật khẩu hoặc sai email: cùng một thông báo, không tạo phiên", async () => {
-    const wrongPassword = login({ email: "admin@metro.vn", password: "sai", remember: true }, 0);
-    const wrongEmail = login(
-      { email: "nobody@metro.vn", password: DEMO_PASSWORD, remember: true },
-      0,
-    );
+  it.each([
+    [401, "Email hoặc mật khẩu không đúng", "INVALID_CREDENTIALS"],
+    [403, "Email chưa được xác thực", "EMAIL_NOT_VERIFIED"],
+    [403, "Tài khoản đã bị khoá", "ACCOUNT_LOCKED"],
+    [429, "Nhập sai quá nhiều lần", "TOO_MANY_ATTEMPTS"],
+  ])("lỗi %i (%s) không tạo phiên", async (status, detail, code) => {
+    route({ "/api/auth/login": () => json(status, { detail, status }) });
 
-    await expect(wrongPassword).rejects.toBeInstanceOf(AuthError);
-    await expect(wrongPassword).rejects.toThrow("Email hoặc mật khẩu không đúng");
-    await expect(wrongEmail).rejects.toThrow("Email hoặc mật khẩu không đúng");
+    const error = await login(input).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(AuthError);
+    expect((error as AuthError).code).toBe(code);
+    expect(authStore.get().status).toBe("anonymous");
+    expect(calledPaths()).toEqual(["/api/auth/login"]);
+  });
+
+  it("mất mạng: báo lỗi kết nối", async () => {
+    fetchMock.mockRejectedValue(new TypeError("Failed to fetch"));
+    await expect(login(input)).rejects.toMatchObject({ code: "NETWORK" });
+  });
+
+  it("tài khoản không có vai trò web: từ chối và thu hồi token vừa cấp", async () => {
+    loginOk({ roles: ["PASSENGER"] });
+
+    await expect(login(input)).rejects.toMatchObject({ code: "NO_WEB_ACCESS" });
     expect(authStore.get().status).toBe("anonymous");
     expect(window.localStorage.getItem(STORAGE_KEY)).toBeNull();
+    expect(calledPaths()).toContain("/api/auth/logout");
   });
 });
 
 describe("logout", () => {
-  it("xóa phiên ở mọi storage và đánh dấu đăng xuất chủ động", async () => {
-    await login({ email: "accountant@metro.vn", password: DEMO_PASSWORD, remember: true }, 0);
+  it("xoá phiên ngay và gửi cả hai token lên server", async () => {
+    loginOk();
+    await login(input);
     logout();
 
     expect(authStore.get()).toMatchObject({ status: "anonymous", user: null, endedBy: "logout" });
     expect(window.localStorage.getItem(STORAGE_KEY)).toBeNull();
-    expect(window.sessionStorage.getItem(STORAGE_KEY)).toBeNull();
-    expect(auditStore.get()[0]).toMatchObject({ actor: "Lê Minh Châu", action: "Đăng xuất" });
+    expect(auditStore.get()[0]).toMatchObject({ action: "Đăng xuất" });
+    const [, init] = fetchMock.mock.calls.at(-1)!;
+    expect(JSON.parse(String(init?.body))).toEqual({ refreshToken: "refresh-1" });
+    expect((init?.headers as Record<string, string>).Authorization).toBe("Bearer access-1");
+  });
+
+  it("mất mạng vẫn đăng xuất ở máy", async () => {
+    loginOk();
+    await login(input);
+    fetchMock.mockRejectedValue(new TypeError("Failed to fetch"));
+
+    logout();
+    await Promise.resolve();
+    expect(authStore.get().status).toBe("anonymous");
+  });
+});
+
+describe("syncCurrentUser", () => {
+  it("cập nhật quyền mới từ /api/me", async () => {
+    loginOk();
+    await login(input);
+    route({ "/api/me": () => json(200, me({ permissions: ["USER_VIEW"] })) });
+
+    await syncCurrentUser();
+    expect(authStore.get().user?.permissions).toEqual(["USER_VIEW"]);
+  });
+
+  it("mất mạng: giữ nguyên phiên", async () => {
+    loginOk();
+    await login(input);
+    fetchMock.mockRejectedValue(new TypeError("Failed to fetch"));
+
+    await syncCurrentUser();
+    expect(authStore.get().status).toBe("authenticated");
+  });
+
+  it("mất vai trò web: kết thúc phiên", async () => {
+    loginOk();
+    await login(input);
+    route({ "/api/me": () => json(200, me({ roles: ["PASSENGER"] })) });
+
+    await syncCurrentUser();
+    expect(authStore.get()).toMatchObject({ status: "anonymous", endedBy: "expired" });
+  });
+});
+
+describe("changePassword", () => {
+  beforeEach(async () => {
+    loginOk();
+    await login(input);
+  });
+
+  it("thành công: kết thúc phiên vì mọi token đã bị thu hồi", async () => {
+    await changePassword("Metro@2026", "MatKhauMoi@456");
+    expect(authStore.get().status).toBe("anonymous");
+    expect(window.localStorage.getItem(STORAGE_KEY)).toBeNull();
+  });
+
+  it("sai mật khẩu hiện tại (400): giữ phiên và không gọi refresh", async () => {
+    route({ "/api/me/password": () => json(400, { detail: "Mật khẩu hiện tại không đúng" }) });
+
+    await expect(changePassword("sai", "MatKhauMoi@456")).rejects.toMatchObject({
+      code: "WRONG_PASSWORD",
+    });
+    expect(authStore.get().status).toBe("authenticated");
+    expect(calledPaths()).not.toContain("/api/auth/refresh");
+  });
+
+  it("mật khẩu mới bị backend từ chối: báo đúng field", async () => {
+    route({ "/api/me/password": () => json(400, { errors: { newPassword: "too long" } }) });
+
+    await expect(changePassword("Metro@2026", "x")).rejects.toMatchObject({
+      code: "INVALID_NEW_PASSWORD",
+    });
+  });
+});
+
+describe("updateProfile", () => {
+  it("gửi fullName và cập nhật phiên từ response", async () => {
+    loginOk();
+    await login(input);
+    route({ "/api/me/profile": () => json(200, me({ fullName: "Tên Mới" })) });
+
+    await updateProfile({ name: "Tên Mới" });
+    expect(authStore.get().user?.name).toBe("Tên Mới");
+    expect(JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? "")).toMatchObject({
+      user: { name: "Tên Mới" },
+    });
   });
 });
 
@@ -73,9 +241,11 @@ describe("hydrateSession", () => {
         name: "Nguyễn Văn An",
         email: "admin@metro.vn",
         role: "ADMIN",
+        permissions: [],
         ...userPatch,
       },
-      issuedAt: Date.now() - 1000,
+      accessToken: "a",
+      refreshToken: "r",
       expiresAt: Date.now() + 60_000,
       ...patch,
     });
@@ -86,10 +256,11 @@ describe("hydrateSession", () => {
     expect(authStore.get()).toMatchObject({ status: "authenticated", user: { role: "ADMIN" } });
   });
 
-  it("bỏ qua phiên đã hết hạn, vai trò lạ hoặc dữ liệu hỏng", () => {
+  it("bỏ qua phiên hết hạn, vai trò lạ, thiếu token (phiên demo cũ) hoặc dữ liệu hỏng", () => {
     for (const raw of [
       stored({ expiresAt: Date.now() - 1 }),
       stored({}, { role: "SUPERUSER" }),
+      stored({ accessToken: undefined }),
       "{không phải json",
     ]) {
       window.localStorage.setItem(STORAGE_KEY, raw);

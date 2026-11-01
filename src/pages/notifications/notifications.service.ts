@@ -1,3 +1,4 @@
+import { adminUsersApi, notificationsApi } from "@/lib/api";
 import { getActorName } from "@/lib/auth/session.store";
 import { createStore } from "@/lib/store";
 import { lineCode, stationName } from "@/lib/network";
@@ -68,6 +69,7 @@ export function validateDraft(d: AnnouncementDraft, recipients: number): DraftEr
   if (!d.title.trim()) e.title = "Vui lòng nhập tiêu đề";
   else if (d.title.length > 200) e.title = "Tiêu đề tối đa 200 ký tự";
   if (!d.content.trim()) e.content = "Vui lòng nhập nội dung";
+  else if (d.content.length > 2000) e.content = "Nội dung tối đa 2000 ký tự";
   const allowed = CHANNELS_BY_AUDIENCE[d.audience];
   if (!d.channels.filter((c) => allowed.includes(c)).length)
     e.channels = "Chọn ít nhất một kênh gửi";
@@ -121,6 +123,43 @@ export function saveDraft(d: AnnouncementDraft, editingId?: string) {
   return record;
 }
 
+const MAX_USER_IDS_PER_REQUEST = 1000;
+
+/** Backend chưa có hẹn giờ gửi: mọi thông báo được gửi ngay. */
+export function isScheduledForLater(d: Pick<AnnouncementDraft, "startsAt">, now = new Date()) {
+  return !!d.startsAt && parse(d.startsAt) > now;
+}
+
+async function activeUserIdsOf(roles: string[]) {
+  const ids: string[] = [];
+  for (let page = 0, totalPages = 1; page < totalPages; page++) {
+    const result = await adminUsersApi.list({ status: "ACTIVE", page, size: 100 });
+    totalPages = result.page.totalPages;
+    ids.push(
+      ...result.content.filter((u) => u.roles.some((r) => roles.includes(r))).map((u) => u.id),
+    );
+  }
+  return ids;
+}
+
+/**
+ * Gửi thật qua backend và trả về số người nhận. Backend chỉ lưu thông báo trong ứng dụng,
+ * chưa có kênh email/push, mức độ, phạm vi tuyến/ga hay thời điểm kết thúc.
+ */
+export async function deliverToBackend(d: AnnouncementDraft) {
+  const content = { title: d.title.trim(), body: d.content.trim() };
+  if (d.audience === "ALL")
+    return (await notificationsApi.send({ ...content, all: true })).recipients;
+
+  const ids = await activeUserIdsOf(ROLES_BY_AUDIENCE[d.audience]);
+  let recipients = 0;
+  for (let i = 0; i < ids.length; i += MAX_USER_IDS_PER_REQUEST) {
+    const userIds = ids.slice(i, i + MAX_USER_IDS_PER_REQUEST);
+    recipients += (await notificationsApi.send({ ...content, userIds })).recipients;
+  }
+  return recipients;
+}
+
 /**
  * Gửi: tạo một dòng notification cho mỗi người nhận và đẩy vào hàng đợi gửi (chạy nền).
  * Bản demo coi như gửi xong ngay; email sai định dạng được tính là gửi lỗi (luồng A4).
@@ -129,6 +168,8 @@ export function publish(
   d: AnnouncementDraft,
   editingId?: string,
   users: User[] = usersStore.get(),
+  /** Số người nhận thật từ backend; có giá trị này thì không ước tính từ dữ liệu giả lập. */
+  delivered?: number,
 ) {
   const base = announcementsStore.get().find((a) => a.id === editingId);
   const targets = users.filter(
@@ -141,7 +182,10 @@ export function publish(
     ...toRecord(d, base),
     status: "PUBLISHED",
     sentAt: fmtDateTime(new Date()),
-    delivery: { recipients: targets.length, sent: targets.length - failed, failed, read: 0 },
+    delivery:
+      delivered === undefined
+        ? { recipients: targets.length, sent: targets.length - failed, failed, read: 0 }
+        : { recipients: delivered, sent: delivered, failed: 0, read: 0 },
   };
   announcementsStore.set((list) =>
     base ? list.map((a) => (a.id === base.id ? record : a)) : [record, ...list],

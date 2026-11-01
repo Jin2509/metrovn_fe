@@ -1,8 +1,8 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
-  /** "false" để ẩn khối tài khoản demo ở trang đăng nhập. */
-  readonly VITE_SHOW_DEMO_ACCOUNTS?: "true" | "false";
+  /** Địa chỉ backend, mặc định http://localhost:8080. */
+  readonly VITE_API_BASE_URL?: string;
 }
 
 interface ImportMeta {

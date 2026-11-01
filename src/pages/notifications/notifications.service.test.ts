@@ -1,9 +1,11 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { adminUsersApi, notificationsApi } from "@/lib/api";
 import { usersStore } from "@/mocks/admin";
 import { announcementsStore } from "@/mocks/announcements";
 import {
   activeForPassengers,
+  deliverToBackend,
   emptyDraft,
   endNow,
   phaseOf,
@@ -105,5 +107,47 @@ describe("thời gian hiệu lực", () => {
     expect(activeForPassengers(announcementsStore.get()).some((a) => a.id === active[0].id)).toBe(
       false,
     );
+  });
+});
+
+describe("deliverToBackend", () => {
+  const draft = { ...emptyDraft(), title: " Tiêu đề ", content: " Nội dung " };
+  const page = (ids: [string, string][], totalPages = 1) => ({
+    content: ids.map(([id, role]) => ({ id, roles: [role] })),
+    page: { size: 100, number: 0, totalElements: ids.length, totalPages },
+  });
+
+  afterEach(() => vi.restoreAllMocks());
+
+  it("gửi cho tất cả bằng all, không tải danh sách người dùng", async () => {
+    const list = vi.spyOn(adminUsersApi, "list");
+    const send = vi.spyOn(notificationsApi, "send").mockResolvedValue({ recipients: 7 });
+    await expect(deliverToBackend({ ...draft, audience: "ALL" })).resolves.toBe(7);
+    expect(send).toHaveBeenCalledWith({ title: "Tiêu đề", body: "Nội dung", all: true });
+    expect(list).not.toHaveBeenCalled();
+  });
+
+  it("gửi theo nhóm: đọc mọi trang và chỉ lấy đúng vai trò", async () => {
+    vi.spyOn(adminUsersApi, "list")
+      .mockResolvedValueOnce(
+        page(
+          [
+            ["a", "STAFF"],
+            ["b", "PASSENGER"],
+          ],
+          2,
+        ) as never,
+      )
+      .mockResolvedValueOnce(page([["c", "STAFF"]], 2) as never);
+    const send = vi.spyOn(notificationsApi, "send").mockResolvedValue({ recipients: 2 });
+    await expect(deliverToBackend({ ...draft, audience: "STAFF" })).resolves.toBe(2);
+    expect(send).toHaveBeenCalledWith({ title: "Tiêu đề", body: "Nội dung", userIds: ["a", "c"] });
+  });
+
+  it("không có ai trong nhóm thì không gọi API gửi", async () => {
+    vi.spyOn(adminUsersApi, "list").mockResolvedValue(page([["b", "PASSENGER"]]) as never);
+    const send = vi.spyOn(notificationsApi, "send");
+    await expect(deliverToBackend({ ...draft, audience: "ACCOUNTANT" })).resolves.toBe(0);
+    expect(send).not.toHaveBeenCalled();
   });
 });

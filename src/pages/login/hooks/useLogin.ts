@@ -2,9 +2,10 @@ import { useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AuthError, login, useAuth } from "@/lib/auth";
-import { EMPTY_LOGIN_DRAFT } from "@/pages/login/login.constants";
 import { resolveRedirectTarget, validateLoginDraft } from "@/pages/login/login.service";
 import type { LoginDraft, LoginErrors } from "@/pages/login/login.types";
+
+const EMPTY_LOGIN_DRAFT: LoginDraft = { email: "", password: "", remember: true };
 
 export function useLogin(redirect?: string) {
   const router = useRouter();

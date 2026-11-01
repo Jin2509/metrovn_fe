@@ -6,8 +6,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { User } from "@/mocks/admin";
-import { USER_ROLE_LABELS, USER_STATUS_OPTIONS } from "@/pages/users/users.constants";
+import { USER_STATUS_OPTIONS, userRoleLabel } from "@/pages/users/users.constants";
 import type { UserRoleFilter, UserStatusFilter } from "@/pages/users/users.types";
 
 export function UserFilters({
@@ -22,7 +21,7 @@ export function UserFilters({
   query: string;
   role: UserRoleFilter;
   /** Vai trò cho bộ lọc; bỏ trống để ẩn bộ lọc vai trò (vd. danh sách hành khách). */
-  roles?: readonly User["role"][];
+  roles?: readonly string[];
   status: UserStatusFilter;
   onQueryChange: (query: string) => void;
   onRoleChange: (role: UserRoleFilter) => void;
@@ -37,7 +36,7 @@ export function UserFilters({
         className="max-w-xs"
       />
       {roles && (
-        <Select value={role} onValueChange={(value) => onRoleChange(value as UserRoleFilter)}>
+        <Select value={role} onValueChange={onRoleChange}>
           <SelectTrigger className="w-44">
             <SelectValue />
           </SelectTrigger>
@@ -45,7 +44,7 @@ export function UserFilters({
             <SelectItem value="ALL">Mọi vai trò</SelectItem>
             {roles.map((value) => (
               <SelectItem key={value} value={value}>
-                {USER_ROLE_LABELS[value]}
+                {userRoleLabel(value)}
               </SelectItem>
             ))}
           </SelectContent>

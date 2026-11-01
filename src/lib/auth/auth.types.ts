@@ -6,14 +6,20 @@ export type SessionUser = {
   id: string;
   name: string;
   email: string;
+  /** Vai trò dùng để chặn route ở web, suy ra từ `GET /api/me` (xem `resolveRole`). */
   role: Role;
-  /** Số điện thoại (users.numberphone) — không bắt buộc. */
-  phone?: string;
+  /** Mã quyền từ backend. Có thể đổi bất kỳ lúc nào nên được tải lại từ `GET /api/me`. */
+  permissions: string[];
 };
 
-export type Session = {
+export type SessionTokens = {
+  accessToken: string;
+  refreshToken: string;
+};
+
+export type Session = SessionTokens & {
   user: SessionUser;
-  issuedAt: number;
+  /** Hạn của refresh token (ms). Sau mốc này phải đăng nhập lại. */
   expiresAt: number;
 };
 

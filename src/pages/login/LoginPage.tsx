@@ -1,10 +1,8 @@
 import { TrainFront } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { DemoAccounts } from "@/pages/login/components/DemoAccounts";
 import { LoginBrandPanel } from "@/pages/login/components/LoginBrandPanel";
 import { LoginForm } from "@/pages/login/components/LoginForm";
 import { useLogin } from "@/pages/login/hooks/useLogin";
-import { SHOW_DEMO_ACCOUNTS } from "@/pages/login/login.constants";
 
 export function LoginPage({ redirect }: { redirect?: string }) {
   const login = useLogin(redirect);
@@ -33,13 +31,6 @@ export function LoginPage({ redirect }: { redirect?: string }) {
               onChange={login.updateDraft}
               onSubmit={login.submit}
             />
-            {SHOW_DEMO_ACCOUNTS && (
-              <DemoAccounts
-                onPick={(account) =>
-                  login.updateDraft({ email: account.email, password: account.password })
-                }
-              />
-            )}
           </CardContent>
         </Card>
       </main>

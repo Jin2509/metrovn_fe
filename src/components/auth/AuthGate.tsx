@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 import { toast } from "sonner";
@@ -5,17 +6,27 @@ import { AppShell } from "@/components/app-shell";
 import { AccessDenied } from "@/components/auth/AccessDenied";
 import { AuthSplash } from "@/components/auth/AuthSplash";
 import { findNavItem } from "@/components/layout/nav.config";
-import { canAccessRoute, hydrateSession, isPublicPath, useAuth, watchSession } from "@/lib/auth";
+import { setAccessChangedHandler } from "@/lib/api";
+import {
+  canAccessRoute,
+  hydrateSession,
+  isPublicPath,
+  syncCurrentUser,
+  useAuth,
+  watchSession,
+} from "@/lib/auth";
 
 /**
  * Cổng bảo vệ cho toàn bộ app, đặt một lần ở route gốc:
- *  1. Đọc phiên đăng nhập sau khi mount (server luôn render trạng thái "loading").
+ *  1. Đọc phiên đăng nhập sau khi mount (server luôn render trạng thái "loading"),
+ *     rồi tải lại thông tin và quyền từ `GET /api/me`.
  *  2. Chưa đăng nhập → chuyển tới /login (kèm trang đang xem để quay lại sau khi đăng nhập).
  *  3. Đã đăng nhập nhưng vai trò không đủ quyền → hiện AccessDenied, trang đích KHÔNG được mount.
  */
 export function AuthGate({ children }: { children: ReactNode }) {
   const { status, user, endedBy } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { pathname, href } = useRouterState({
     select: (s) => ({ pathname: s.location.pathname, href: s.location.href }),
   });
@@ -23,8 +34,21 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     hydrateSession();
-    return watchSession(() => toast.warning("Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại"));
+    void syncCurrentUser();
+    setAccessChangedHandler(() => void syncCurrentUser());
+    const unwatch = watchSession(() =>
+      toast.warning("Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại"),
+    );
+    return () => {
+      setAccessChangedHandler(undefined);
+      unwatch();
+    };
   }, []);
+
+  // Không để dữ liệu API của phiên trước lọt sang người đăng nhập sau.
+  useEffect(() => {
+    if (status === "anonymous") queryClient.clear();
+  }, [status, queryClient]);
 
   useEffect(() => {
     if (status === "anonymous" && !isPublic)

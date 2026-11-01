@@ -14,7 +14,7 @@ const FIELDS: { key: keyof PasswordDraft; label: string; autoComplete: string }[
 ];
 
 export function PasswordSection() {
-  const { draft, setDraft, errors, submit } = usePasswordChange();
+  const { draft, setDraft, errors, pending, submit } = usePasswordChange();
   return (
     <Section title="Đổi mật khẩu" description="Nên đổi định kỳ 90 ngày một lần">
       <form
@@ -54,11 +54,11 @@ export function PasswordSection() {
             );
           })}
         </ul>
-        <Button type="submit" className="w-full">
+        <Button type="submit" className="w-full" disabled={pending}>
           Cập nhật mật khẩu
         </Button>
         <p className="text-xs text-muted-foreground">
-          Bản demo chỉ đổi mật khẩu trong phiên hiện tại; tải lại trang sẽ về mật khẩu mặc định.
+          Sau khi đổi, mọi thiết bị kể cả thiết bị này sẽ phải đăng nhập lại.
         </p>
       </form>
     </Section>
