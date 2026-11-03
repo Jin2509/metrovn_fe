@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { AlertCircle, Loader2, LogIn } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -78,16 +79,21 @@ export function LoginForm({
         )}
       </div>
 
-      <div className="flex items-center gap-2">
-        <Checkbox
-          id="login-remember"
-          checked={draft.remember}
-          disabled={pending}
-          onCheckedChange={(checked) => onChange({ remember: checked === true })}
-        />
-        <Label htmlFor="login-remember" className="cursor-pointer font-normal">
-          Ghi nhớ đăng nhập trên thiết bị này
-        </Label>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="login-remember"
+            checked={draft.remember}
+            disabled={pending}
+            onCheckedChange={(checked) => onChange({ remember: checked === true })}
+          />
+          <Label htmlFor="login-remember" className="cursor-pointer font-normal">
+            Ghi nhớ đăng nhập trên thiết bị này
+          </Label>
+        </div>
+        <Link to="/forgot-password" className="text-sm font-medium text-primary hover:underline">
+          Quên mật khẩu?
+        </Link>
       </div>
 
       <Button type="submit" className="w-full" size="lg" disabled={pending}>

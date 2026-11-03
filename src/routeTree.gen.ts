@@ -13,12 +13,14 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApprovalsRouteImport } from './routes/approvals'
 import { Route as AuditLogsRouteImport } from './routes/audit-logs'
 import { Route as ChatbotRouteImport } from './routes/chatbot'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MapRouteImport } from './routes/map'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as PeriodClosingRouteImport } from './routes/period-closing'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as PromotionsRouteImport } from './routes/promotions'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as RevenueRouteImport } from './routes/revenue'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as StationStatsRouteImport } from './routes/station-stats'
@@ -46,6 +48,11 @@ const AuditLogsRoute = AuditLogsRouteImport.update({
 const ChatbotRoute = ChatbotRouteImport.update({
   id: '/chatbot',
   path: '/chatbot',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -76,6 +83,11 @@ const ProfileRoute = ProfileRouteImport.update({
 const PromotionsRoute = PromotionsRouteImport.update({
   id: '/promotions',
   path: '/promotions',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RevenueRoute = RevenueRouteImport.update({
@@ -124,12 +136,14 @@ export interface FileRoutesByFullPath {
   '/approvals': typeof ApprovalsRoute
   '/audit-logs': typeof AuditLogsRoute
   '/chatbot': typeof ChatbotRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/map': typeof MapRoute
   '/notifications': typeof NotificationsRoute
   '/period-closing': typeof PeriodClosingRoute
   '/profile': typeof ProfileRoute
   '/promotions': typeof PromotionsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/revenue': typeof RevenueRoute
   '/settings': typeof SettingsRoute
   '/station-stats': typeof StationStatsRoute
@@ -144,12 +158,14 @@ export interface FileRoutesByTo {
   '/approvals': typeof ApprovalsRoute
   '/audit-logs': typeof AuditLogsRoute
   '/chatbot': typeof ChatbotRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/map': typeof MapRoute
   '/notifications': typeof NotificationsRoute
   '/period-closing': typeof PeriodClosingRoute
   '/profile': typeof ProfileRoute
   '/promotions': typeof PromotionsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/revenue': typeof RevenueRoute
   '/settings': typeof SettingsRoute
   '/station-stats': typeof StationStatsRoute
@@ -165,12 +181,14 @@ export interface FileRoutesById {
   '/approvals': typeof ApprovalsRoute
   '/audit-logs': typeof AuditLogsRoute
   '/chatbot': typeof ChatbotRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/map': typeof MapRoute
   '/notifications': typeof NotificationsRoute
   '/period-closing': typeof PeriodClosingRoute
   '/profile': typeof ProfileRoute
   '/promotions': typeof PromotionsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/revenue': typeof RevenueRoute
   '/settings': typeof SettingsRoute
   '/station-stats': typeof StationStatsRoute
@@ -187,12 +205,14 @@ export interface FileRouteTypes {
     | '/approvals'
     | '/audit-logs'
     | '/chatbot'
+    | '/forgot-password'
     | '/login'
     | '/map'
     | '/notifications'
     | '/period-closing'
     | '/profile'
     | '/promotions'
+    | '/reset-password'
     | '/revenue'
     | '/settings'
     | '/station-stats'
@@ -207,12 +227,14 @@ export interface FileRouteTypes {
     | '/approvals'
     | '/audit-logs'
     | '/chatbot'
+    | '/forgot-password'
     | '/login'
     | '/map'
     | '/notifications'
     | '/period-closing'
     | '/profile'
     | '/promotions'
+    | '/reset-password'
     | '/revenue'
     | '/settings'
     | '/station-stats'
@@ -227,12 +249,14 @@ export interface FileRouteTypes {
     | '/approvals'
     | '/audit-logs'
     | '/chatbot'
+    | '/forgot-password'
     | '/login'
     | '/map'
     | '/notifications'
     | '/period-closing'
     | '/profile'
     | '/promotions'
+    | '/reset-password'
     | '/revenue'
     | '/settings'
     | '/station-stats'
@@ -248,12 +272,14 @@ export interface RootRouteChildren {
   ApprovalsRoute: typeof ApprovalsRoute
   AuditLogsRoute: typeof AuditLogsRoute
   ChatbotRoute: typeof ChatbotRoute
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
   MapRoute: typeof MapRoute
   NotificationsRoute: typeof NotificationsRoute
   PeriodClosingRoute: typeof PeriodClosingRoute
   ProfileRoute: typeof ProfileRoute
   PromotionsRoute: typeof PromotionsRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   RevenueRoute: typeof RevenueRoute
   SettingsRoute: typeof SettingsRoute
   StationStatsRoute: typeof StationStatsRoute
@@ -292,6 +318,13 @@ declare module '@tanstack/react-router' {
       path: '/chatbot'
       fullPath: '/chatbot'
       preLoaderRoute: typeof ChatbotRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -334,6 +367,13 @@ declare module '@tanstack/react-router' {
       path: '/promotions'
       fullPath: '/promotions'
       preLoaderRoute: typeof PromotionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/revenue': {
@@ -400,12 +440,14 @@ const rootRouteChildren: RootRouteChildren = {
   ApprovalsRoute: ApprovalsRoute,
   AuditLogsRoute: AuditLogsRoute,
   ChatbotRoute: ChatbotRoute,
+  ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
   MapRoute: MapRoute,
   NotificationsRoute: NotificationsRoute,
   PeriodClosingRoute: PeriodClosingRoute,
   ProfileRoute: ProfileRoute,
   PromotionsRoute: PromotionsRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   RevenueRoute: RevenueRoute,
   SettingsRoute: SettingsRoute,
   StationStatsRoute: StationStatsRoute,

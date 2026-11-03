@@ -5,6 +5,8 @@ export {
   changePassword,
   login,
   logout,
+  requestPasswordReset,
+  resetPassword,
   resolveRole,
   syncCurrentUser,
   updateProfile,

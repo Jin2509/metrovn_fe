@@ -1,10 +1,9 @@
-import { Check, X } from "lucide-react";
 import { Section } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
-import { PASSWORD_RULES, type PasswordDraft } from "@/pages/profile/profile.service";
+import { PasswordRules } from "@/pages/profile/components/PasswordRules";
+import type { PasswordDraft } from "@/pages/profile/profile.service";
 import { usePasswordChange } from "@/pages/profile/hooks/useProfile";
 
 const FIELDS: { key: keyof PasswordDraft; label: string; autoComplete: string }[] = [
@@ -37,23 +36,7 @@ export function PasswordSection() {
             {errors[f.key] && <p className="text-xs text-destructive">{errors[f.key]}</p>}
           </div>
         ))}
-        <ul className="grid gap-1.5 text-xs sm:grid-cols-2">
-          {PASSWORD_RULES.map((r) => {
-            const ok = r.test(draft.next);
-            return (
-              <li
-                key={r.label}
-                className={cn(
-                  "flex items-center gap-1.5",
-                  ok ? "text-success" : "text-muted-foreground",
-                )}
-              >
-                {ok ? <Check className="h-3.5 w-3.5" /> : <X className="h-3.5 w-3.5" />}
-                {r.label}
-              </li>
-            );
-          })}
-        </ul>
+        <PasswordRules password={draft.next} />
         <Button type="submit" className="w-full" disabled={pending}>
           Cập nhật mật khẩu
         </Button>

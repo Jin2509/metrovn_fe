@@ -1,10 +1,15 @@
 import { canAccessRoute, isPublicPath, normalizePath, type Role } from "@/lib/auth";
 import type { LoginDraft, LoginErrors } from "@/pages/login/login.types";
 
+export function validateEmail(email: string): string | undefined {
+  if (!email.trim()) return "Vui lòng nhập email";
+  if (!/^\S+@\S+\.\S+$/.test(email.trim())) return "Email không hợp lệ";
+}
+
 export function validateLoginDraft(draft: LoginDraft): LoginErrors {
   const errors: LoginErrors = {};
-  if (!draft.email.trim()) errors.email = "Vui lòng nhập email";
-  else if (!/^\S+@\S+\.\S+$/.test(draft.email.trim())) errors.email = "Email không hợp lệ";
+  const emailError = validateEmail(draft.email);
+  if (emailError) errors.email = emailError;
   if (!draft.password) errors.password = "Vui lòng nhập mật khẩu";
   return errors;
 }

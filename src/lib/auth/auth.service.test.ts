@@ -6,6 +6,8 @@ import {
   changePassword,
   login,
   logout,
+  requestPasswordReset,
+  resetPassword,
   resolveRole,
   syncCurrentUser,
   updateProfile,
@@ -267,5 +269,86 @@ describe("hydrateSession", () => {
       hydrateSession();
       expect(authStore.get().status, raw).toBe("anonymous");
     }
+  });
+});
+
+describe("requestPasswordReset", () => {
+  it("gửi email đã chuẩn hoá", async () => {
+    let body: unknown;
+    route({
+      "/api/auth/forgot-password": (init) => {
+        body = JSON.parse(String(init?.body));
+        return json(202);
+      },
+    });
+
+    await expect(requestPasswordReset(" An@Metro.vn ")).resolves.toEqual({});
+    expect(body).toEqual({ email: "an@metro.vn" });
+  });
+
+  it("429: trả về số giây phải chờ thay vì báo lỗi", async () => {
+    route({
+      "/api/auth/forgot-password": () =>
+        new Response(null, { status: 429, headers: { "Retry-After": "42" } }),
+    });
+
+    await expect(requestPasswordReset("an@metro.vn")).resolves.toEqual({ retryAfter: 42 });
+  });
+
+  it("429 không có Retry-After: vẫn phải chờ, không coi là đã gửi", async () => {
+    route({ "/api/auth/forgot-password": () => json(429) });
+
+    await expect(requestPasswordReset("an@metro.vn")).resolves.toEqual({ retryAfter: 60 });
+  });
+
+  it("lỗi khác vẫn được ném ra", async () => {
+    route({ "/api/auth/forgot-password": () => json(500) });
+
+    await expect(requestPasswordReset("an@metro.vn")).rejects.toMatchObject({ status: 500 });
+  });
+});
+
+describe("resetPassword", () => {
+  const reset = { email: " An@Metro.vn ", code: "012345", newPassword: "MatKhau123" };
+  const failWith = (status: number, body?: unknown) =>
+    route({ "/api/auth/reset-password": () => json(status, body) });
+
+  it("gửi đúng body, giữ số 0 đầu của mã", async () => {
+    let body: unknown;
+    route({
+      "/api/auth/reset-password": (init) => {
+        body = JSON.parse(String(init?.body));
+        return json(204);
+      },
+    });
+
+    await resetPassword(reset);
+    expect(body).toEqual({ email: "an@metro.vn", code: "012345", newPassword: "MatKhau123" });
+  });
+
+  it("400 sai mã: hiện nội dung từ backend", async () => {
+    failWith(400, { detail: "Mã đã hết hạn, vui lòng yêu cầu mã mới" });
+
+    await expect(resetPassword(reset)).rejects.toMatchObject({
+      code: "INVALID_RESET_CODE",
+      message: "Mã đã hết hạn, vui lòng yêu cầu mã mới",
+    });
+  });
+
+  it("400 theo field: không hiện nội dung chung của backend", async () => {
+    failWith(400, { detail: "Dữ liệu không hợp lệ", errors: { newPassword: "too short" } });
+    await expect(resetPassword(reset)).rejects.toMatchObject({ code: "INVALID_NEW_PASSWORD" });
+
+    failWith(400, { detail: "Dữ liệu không hợp lệ", errors: { code: "bad" } });
+    await expect(resetPassword(reset)).rejects.toMatchObject({
+      code: "INVALID_RESET_CODE",
+      message: "Mã xác thực gồm 6 chữ số",
+    });
+  });
+
+  it("429: mã bị khoá, phải yêu cầu mã mới", async () => {
+    failWith(429);
+
+    await expect(resetPassword(reset)).rejects.toMatchObject({ code: "RESET_CODE_LOCKED" });
   });
 });

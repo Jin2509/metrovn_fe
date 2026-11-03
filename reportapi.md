@@ -83,12 +83,13 @@ Các điểm này khác với bản giả lập, do backend không có hoặc l�
 
 **Hạn chế đã biết:**
 
-- **Chưa có màn hình** cho quên mật khẩu, đăng ký, nhập OTP và đổi email. Hàm API đã có sẵn trong `authApi` và `meApi`. Vì thiếu màn OTP, login trả "Email chưa được xác thực" chỉ hiện thông báo, không chuyển màn như tài liệu gợi ý.
+- **Quên mật khẩu** đã có màn hình: `/forgot-password` → `/reset-password` → `/login`. Web không có đăng ký vì tài khoản do Admin tạo, nên đã bỏ `authApi.register`.
+- **Chưa có màn hình** cho xác thực email và đổi email. Hàm API đã có sẵn trong `authApi` và `meApi`. Vì thiếu màn OTP, login trả "Email chưa được xác thực" chỉ hiện thông báo, không chuyển màn như tài liệu gợi ý.
 - **Vẫn dùng dữ liệu giả:** phân công ga, thông báo, thống kê ga, phê duyệt và các trang chưa có API. Danh sách người dùng ở các trang này (`usersStore`) không khớp với tài khoản thật.
 - **Nhật ký hệ thống** đọc từ `GET /api/admin/auth-events`, nên chỉ có sự kiện bảo mật của tài khoản. Thao tác trên các trang dữ liệu giả vẫn gọi `logAction` nhưng chỉ nằm trong bộ nhớ trình duyệt và không còn hiển thị.
 - **Tab nhân bản khi không chọn "Ghi nhớ":** nhân bản tab sẽ sao chép `sessionStorage`, nên hai tab giữ cùng một refresh token mà không thấy token mới của nhau. Khi cả hai cùng refresh, backend sẽ thu hồi phiên và người dùng phải đăng nhập lại.
 - **Web Locks chỉ có trên https hoặc localhost.** Chạy qua `http://<IP LAN>` thì không phối hợp được giữa các tab.
-- Web vẫn yêu cầu mật khẩu mới ở trang hồ sơ có cả chữ và số, chặt hơn backend. Hộp thoại admin đặt lại mật khẩu chỉ áp dụng giới hạn của backend.
+- Web vẫn yêu cầu mật khẩu mới ở trang hồ sơ và trang đặt lại mật khẩu có cả chữ và số, chặt hơn backend. Hộp thoại admin đặt lại mật khẩu chỉ áp dụng giới hạn của backend.
 
 ## 7. Kiểm tra đã chạy
 

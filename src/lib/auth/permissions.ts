@@ -90,7 +90,7 @@ export const ACTION_LABELS: Record<Action, string> = {
 };
 
 /** Các route không cần đăng nhập. */
-export const PUBLIC_PATHS = ["/login"] as const;
+export const PUBLIC_PATHS = ["/login", "/forgot-password", "/reset-password"] as const;
 
 export function normalizePath(pathname: string): string {
   const path = pathname.split(/[?#]/)[0] || "/";

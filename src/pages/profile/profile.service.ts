@@ -11,13 +11,18 @@ export const PASSWORD_RULES = [
   { test: (p: string) => /[A-Za-z]/.test(p) && /\d/.test(p), label: "Có cả chữ và số" },
 ] as const;
 
+export function validateNewPassword(password: string): string | undefined {
+  if (PASSWORD_RULES.some((r) => !r.test(password)))
+    return "Mật khẩu mới cần ít nhất 8 ký tự, có cả chữ và số";
+  if (!isValidNewPassword(password))
+    return "Mật khẩu mới quá dài (tối đa 72 byte, ký tự có dấu tính nhiều byte hơn)";
+}
+
 export function validatePasswordChange(draft: PasswordDraft): PasswordErrors {
   const errors: PasswordErrors = {};
   if (!draft.current) errors.current = "Nhập mật khẩu hiện tại";
-  if (PASSWORD_RULES.some((r) => !r.test(draft.next)))
-    errors.next = "Mật khẩu mới cần ít nhất 8 ký tự, có cả chữ và số";
-  else if (!isValidNewPassword(draft.next))
-    errors.next = "Mật khẩu mới quá dài (tối đa 72 byte, ký tự có dấu tính nhiều byte hơn)";
+  const nextError = validateNewPassword(draft.next);
+  if (nextError) errors.next = nextError;
   else if (draft.next === draft.current) errors.next = "Mật khẩu mới phải khác mật khẩu hiện tại";
   if (draft.confirm !== draft.next) errors.confirm = "Mật khẩu nhập lại không khớp";
   return errors;

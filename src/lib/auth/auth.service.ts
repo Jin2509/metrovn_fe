@@ -21,6 +21,8 @@ export class AuthError extends Error {
       | "TOO_MANY_ATTEMPTS"
       | "WRONG_PASSWORD"
       | "INVALID_NEW_PASSWORD"
+      | "INVALID_RESET_CODE"
+      | "RESET_CODE_LOCKED"
       | "NETWORK",
     message: string,
   ) {
@@ -136,6 +138,44 @@ export async function changePassword(currentPassword: string, newPassword: strin
   }
   logAction("Đổi mật khẩu", email);
   endSession("logout");
+}
+
+/**
+ * Gửi mã đặt lại mật khẩu. Backend trả 202 kể cả khi email không tồn tại, nên không báo được mã
+ * có được gửi hay không. 429: vừa gửi mã xong, mã cũ vẫn dùng được; trả về số giây phải chờ.
+ */
+export async function requestPasswordReset(email: string): Promise<{ retryAfter?: number }> {
+  try {
+    await authApi.forgotPassword(email.trim().toLowerCase());
+    return {};
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 429)
+      return { retryAfter: error.retryAfter ?? 60 };
+    throw error;
+  }
+}
+
+/** Thành công: backend thu hồi token trên mọi thiết bị, người dùng đăng nhập lại bằng mật khẩu mới. */
+export async function resetPassword(input: { email: string; code: string; newPassword: string }) {
+  try {
+    await authApi.resetPassword({ ...input, email: input.email.trim().toLowerCase() });
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 400)
+      throw error.fieldErrors.newPassword
+        ? new AuthError("INVALID_NEW_PASSWORD", "Mật khẩu mới không hợp lệ")
+        : new AuthError(
+            "INVALID_RESET_CODE",
+            error.fieldErrors.code
+              ? "Mã xác thực gồm 6 chữ số"
+              : error.detail || "Mã xác thực không đúng hoặc đã hết hạn",
+          );
+    if (error instanceof ApiError && error.status === 429)
+      throw new AuthError(
+        "RESET_CODE_LOCKED",
+        "Nhập sai mã quá nhiều lần, vui lòng yêu cầu mã mới",
+      );
+    throw error;
+  }
 }
 
 /** Đổi họ tên. Backend chưa có số điện thoại; đổi email cần thêm màn nhập OTP. */

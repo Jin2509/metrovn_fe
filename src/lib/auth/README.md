@@ -9,6 +9,7 @@ lib/auth/
 components/auth/    ← AuthGate (chặn route), AccessDenied, RoleBadge, Can, AuthSplash
 components/layout/  ← AppShell, Sidebar, MobileNav, Header, UserCard, nav.config.ts
 pages/login/        ← trang /login (theo cấu trúc pages/<feature> của dự án)
+pages/forgotpassword/ ← /forgot-password và /reset-password (web không có đăng ký, tài khoản do Admin tạo)
 ```
 
 ## Thêm một màn hình mới

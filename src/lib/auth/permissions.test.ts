@@ -124,9 +124,11 @@ describe("can (thao tác)", () => {
 });
 
 describe("isPublicPath", () => {
-  it("chỉ /login là công khai", () => {
+  it("chỉ đăng nhập và quên mật khẩu là công khai", () => {
     expect(isPublicPath("/login")).toBe(true);
     expect(isPublicPath("/login/")).toBe(true);
+    expect(isPublicPath("/forgot-password")).toBe(true);
+    expect(isPublicPath("/reset-password")).toBe(true);
     expect(isPublicPath("/users")).toBe(false);
     expect(isPublicPath("/")).toBe(false);
   });
