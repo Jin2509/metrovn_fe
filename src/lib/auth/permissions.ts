@@ -18,8 +18,8 @@ export const ROLE_LABELS: Record<Role, string> = {
 };
 
 export const ROLE_DESCRIPTIONS: Record<Role, string> = {
-  ADMIN: "Cấu hình mạng lưới, giá vé, chatbot, tài khoản và theo dõi vận hành",
-  MANAGER: "Phê duyệt thay đổi, theo dõi chính sách và chất lượng chatbot",
+  ADMIN: "Cấu hình mạng lưới, giá vé, Hành trình xanh, tài khoản và xử lý sự cố tại ga",
+  MANAGER: "Phê duyệt thay đổi, xem xét hồ sơ sinh viên, xử lý sự cố và theo dõi chính sách",
   ACCOUNTANT: "Giao dịch, đối soát và chốt kỳ tài chính",
 };
 
@@ -36,15 +36,20 @@ export const ROUTE_ACCESS = {
   "/map": ADMIN,
   "/stations": ADMIN,
   "/trains": ADMIN,
-  // Kinh doanh (tab: loại vé/gửi xe · khuyến mãi/hạng thành viên)
+  // Kinh doanh (tab: loại vé/gửi xe · CPoint/nâng hạng/chính sách/chương trình ưu đãi).
+  // Manager không vào trang này: duyệt cấu hình ở Hộp phê duyệt, xem ở Chính sách đang áp dụng.
   "/tickets": ADMIN,
-  "/promotions": ADMIN,
+  "/green-journey": ADMIN,
   // Khách hàng: thông báo tới hành khách + chatbot hỗ trợ tích hợp trong app.
   // Manager chỉ xem tab "Thống kê"; lịch sử hội thoại và kho tri thức là của Admin (ACTION_ACCESS).
   "/notifications": ADMIN,
   "/chatbot": OVERSIGHT,
+  // Hệ thống tự xác nhận sinh viên. Admin chỉnh quy tắc, Manager xem hồ sơ ngoại lệ (ACTION_ACCESS).
+  "/student-verifications": OVERSIGHT,
   // Điều hành (tab: hộp phê duyệt/chính sách đang áp dụng)
   "/approvals": MANAGER,
+  // Sự cố nhân viên ga báo từ app: chỉ Admin và Manager.
+  "/incidents": OVERSIGHT,
   // Tài chính (tab: tra cứu giao dịch/đối soát)
   "/transactions": FINANCE,
   "/revenue": EVERYONE,
@@ -76,6 +81,12 @@ export const ACTION_ACCESS = {
    * Admin vẫn mở được trang Giao dịch & đối soát (FINANCE ở ROUTE_ACCESS) nhưng chỉ xem.
    */
   "reconciliation.confirm": ACCOUNTANT,
+  /** Đổi trạng thái sự cố, duyệt hoặc từ chối báo hành khách. */
+  "incidents.manage": OVERSIGHT,
+  /** Quyết định hồ sơ sinh viên máy không tự xử lý được, như các phê duyệt khác của Manager. */
+  "student.review": MANAGER,
+  /** Chỉnh ngưỡng tự duyệt và danh sách trường. */
+  "student.configure": ADMIN,
 } as const satisfies Record<string, readonly Role[]>;
 
 export type Action = keyof typeof ACTION_ACCESS;
@@ -87,6 +98,9 @@ export const ACTION_LABELS: Record<Action, string> = {
   "chatbot.conversations": "Đọc hội thoại chatbot của hành khách",
   "chatbot.manage": "Quản lý kho tri thức chatbot (FAQ)",
   "reconciliation.confirm": "Xác nhận đối soát giao dịch",
+  "incidents.manage": "Xử lý sự cố và duyệt báo hành khách",
+  "student.review": "Xem xét hồ sơ xác nhận sinh viên",
+  "student.configure": "Chỉnh quy tắc tự động xác nhận sinh viên",
 };
 
 /** Các route không cần đăng nhập. */

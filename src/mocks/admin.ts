@@ -39,11 +39,19 @@ export const usersStore = createStore<User[]>(
 );
 
 export type ApprovalType =
-  "TICKET_PRICE" | "PARKING_PRICE" | "PROMOTION" | "OPERATION" | "ACCOUNT" | "STATION" | "LINE";
+  | "TICKET_PRICE"
+  | "PARKING_PRICE"
+  | "PROMOTION"
+  | "GREEN_POLICY"
+  | "OPERATION"
+  | "ACCOUNT"
+  | "STATION"
+  | "LINE";
 export const approvalLabel: Record<ApprovalType, string> = {
   TICKET_PRICE: "Giá vé",
   PARKING_PRICE: "Giá gửi xe",
-  PROMOTION: "Khuyến mãi",
+  PROMOTION: "Ưu đãi",
+  GREEN_POLICY: "Hành trình xanh",
   OPERATION: "Cấu hình vận hành",
   ACCOUNT: "Tài khoản & nhân viên",
   STATION: "Nhà ga",
@@ -264,24 +272,6 @@ export const promosStore = createStore<Promo[]>([
     start: "2026-10-01",
     end: "2026-11-30",
     status: "INACTIVE",
-  },
-]);
-export const tiersStore = createStore([
-  { id: "M1", name: "Đồng", threshold: 0, multiplier: 1, benefits: "Tích điểm cơ bản" },
-  { id: "M2", name: "Bạc", threshold: 500, multiplier: 1.2, benefits: "Giảm 5% vé tháng" },
-  {
-    id: "M3",
-    name: "Vàng",
-    threshold: 2000,
-    multiplier: 1.5,
-    benefits: "Giảm 10% vé tháng, ưu tiên gửi xe",
-  },
-  {
-    id: "M4",
-    name: "Kim cương",
-    threshold: 5000,
-    multiplier: 2,
-    benefits: "Giảm 15%, 2 lượt gửi xe miễn phí/tháng",
   },
 ]);
 export type Txn = {

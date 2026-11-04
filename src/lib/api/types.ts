@@ -105,8 +105,7 @@ export type NotificationListQuery = {
 
 /** Chọn đúng một trong hai: `all` hoặc `userIds` (tối đa 1000). */
 export type SendNotificationBody = { title: string; body: string } & (
-  | { all: true }
-  | { userIds: string[] }
+  { all: true } | { userIds: string[] }
 );
 
 export type RoleResponse = {

@@ -42,6 +42,14 @@ const statusMap: Record<string, [string, string]> = {
   // Thông báo & chatbot
   ADDED: ["Đã thêm vào kho tri thức", "bg-success/15 text-success"],
   IGNORED: ["Bỏ qua", "bg-muted text-muted-foreground"],
+  // Sự cố tại ga
+  OPEN: ["Mới", "bg-destructive/15 text-destructive"],
+  IN_PROGRESS: ["Đang xử lý", "bg-accent/20 text-accent-foreground"],
+  RESOLVED: ["Đã xử lý", "bg-success/15 text-success"],
+  PUBLISHED: ["Đang hiện", "bg-primary/15 text-primary"],
+  // Xác nhận sinh viên
+  VERIFIED: ["Đã xác nhận", "bg-success/15 text-success"],
+  NEEDS_REVIEW: ["Cần xem xét", "bg-accent/20 text-accent-foreground"],
 };
 export function StatusBadge({ s, label }: { s: string; label?: string }) {
   const [l, c] = statusMap[s] ?? [s, "bg-muted"];

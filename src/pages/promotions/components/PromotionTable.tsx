@@ -15,11 +15,11 @@ export function PromotionTable({
 }) {
   return (
     <Section
-      title="Chương trình khuyến mãi"
+      title="Chương trình ưu đãi"
       action={
         <Button onClick={onCreate}>
           <Plus className="h-4 w-4" />
-          Tạo khuyến mãi
+          Tạo chương trình
         </Button>
       }
     >

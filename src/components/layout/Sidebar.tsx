@@ -4,11 +4,19 @@ import { UserCard } from "@/components/layout/UserCard";
 import { getVisibleNavGroups } from "@/components/layout/nav.config";
 import { useAuth } from "@/lib/auth";
 import { approvalsStore } from "@/mocks/admin";
+import { incidentsStore } from "@/mocks/incidents";
+import { isOpen } from "@/pages/incidents/incidents.service";
+import {
+  studentStats,
+  studentVerificationsStore,
+} from "@/pages/studentverification/student.service";
 
 /** Số việc đang chờ xử lý hiển thị cạnh mục menu tương ứng. */
 function useNavBadges(): Partial<Record<string, number>> {
   const pending = approvalsStore.use().filter((a) => a.status === "PENDING").length;
-  return { "/approvals": pending };
+  const incidents = incidentsStore.use().filter(isOpen).length;
+  const students = studentStats(studentVerificationsStore.use()).needsReview;
+  return { "/approvals": pending, "/incidents": incidents, "/student-verifications": students };
 }
 
 function SidebarBrand() {

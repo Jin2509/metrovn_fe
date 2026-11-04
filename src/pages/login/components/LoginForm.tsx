@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { AlertCircle, Loader2, LogIn } from "lucide-react";
+import { AlertCircle, Loader2, LogIn, UserRound } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -41,18 +41,22 @@ export function LoginForm({
 
       <div className="space-y-1.5">
         <Label htmlFor="login-email">Email</Label>
-        <Input
-          id="login-email"
-          type="email"
-          autoComplete="username"
-          autoFocus
-          placeholder="ten@metro.vn"
-          value={draft.email}
-          disabled={pending}
-          aria-invalid={!!errors.email}
-          aria-describedby={errors.email ? "login-email-error" : undefined}
-          onChange={(event) => onChange({ email: event.target.value })}
-        />
+        <div className="relative">
+          <UserRound className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-sidebar-foreground/70" />
+          <Input
+            id="login-email"
+            className="pl-9"
+            type="email"
+            autoComplete="username"
+            autoFocus
+            placeholder="ten@metro.vn"
+            value={draft.email}
+            disabled={pending}
+            aria-invalid={!!errors.email}
+            aria-describedby={errors.email ? "login-email-error" : undefined}
+            onChange={(event) => onChange({ email: event.target.value })}
+          />
+        </div>
         {errors.email && (
           <p id="login-email-error" className="text-xs text-destructive">
             {errors.email}
@@ -88,7 +92,7 @@ export function LoginForm({
             onCheckedChange={(checked) => onChange({ remember: checked === true })}
           />
           <Label htmlFor="login-remember" className="cursor-pointer font-normal">
-            Ghi nhớ đăng nhập trên thiết bị này
+            Ghi nhớ đăng nhập
           </Label>
         </div>
         <Link to="/forgot-password" className="text-sm font-medium text-primary hover:underline">

@@ -116,6 +116,28 @@ describe("can (thao tác)", () => {
     }
   });
 
+  it("sự cố: chỉ Admin và Manager vào trang và xử lý được", () => {
+    for (const role of ["ADMIN", "MANAGER"] as const) {
+      expect(canAccessRoute(role, "/incidents"), role).toBe(true);
+      expect(can(role, "incidents.manage"), role).toBe(true);
+    }
+    expect(canAccessRoute("ACCOUNTANT", "/incidents")).toBe(false);
+    expect(can("ACCOUNTANT", "incidents.manage")).toBe(false);
+  });
+
+  it("xác nhận sinh viên: Manager quyết định ngoại lệ, Admin chỉnh quy tắc", () => {
+    expect(can("MANAGER", "student.review")).toBe(true);
+    expect(can("ADMIN", "student.review")).toBe(false);
+    expect(can("ADMIN", "student.configure")).toBe(true);
+    expect(can("MANAGER", "student.configure")).toBe(false);
+    expect(canAccessRoute("ACCOUNTANT", "/student-verifications")).toBe(false);
+  });
+
+  it("Hành trình xanh: Admin cấu hình, Manager duyệt ở hộp phê duyệt", () => {
+    expect(canAccessRoute("ADMIN", "/green-journey")).toBe(true);
+    expect(canAccessRoute("MANAGER", "/green-journey")).toBe(false);
+  });
+
   it("mọi thao tác đều có mô tả cho bảng phân quyền", () => {
     for (const action of Object.keys(ACTION_ACCESS)) {
       expect(ACTION_LABELS, action).toHaveProperty([action]);

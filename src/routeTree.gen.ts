@@ -14,17 +14,19 @@ import { Route as ApprovalsRouteImport } from './routes/approvals'
 import { Route as AuditLogsRouteImport } from './routes/audit-logs'
 import { Route as ChatbotRouteImport } from './routes/chatbot'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as GreenJourneyRouteImport } from './routes/green-journey'
+import { Route as IncidentsRouteImport } from './routes/incidents'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MapRouteImport } from './routes/map'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as PeriodClosingRouteImport } from './routes/period-closing'
 import { Route as ProfileRouteImport } from './routes/profile'
-import { Route as PromotionsRouteImport } from './routes/promotions'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as RevenueRouteImport } from './routes/revenue'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as StationStatsRouteImport } from './routes/station-stats'
 import { Route as StationsRouteImport } from './routes/stations'
+import { Route as StudentVerificationsRouteImport } from './routes/student-verifications'
 import { Route as TicketsRouteImport } from './routes/tickets'
 import { Route as TrainsRouteImport } from './routes/trains'
 import { Route as TransactionsRouteImport } from './routes/transactions'
@@ -55,6 +57,16 @@ const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
   path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GreenJourneyRoute = GreenJourneyRouteImport.update({
+  id: '/green-journey',
+  path: '/green-journey',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IncidentsRoute = IncidentsRouteImport.update({
+  id: '/incidents',
+  path: '/incidents',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -80,11 +92,6 @@ const ProfileRoute = ProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PromotionsRoute = PromotionsRouteImport.update({
-  id: '/promotions',
-  path: '/promotions',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
@@ -108,6 +115,11 @@ const StationStatsRoute = StationStatsRouteImport.update({
 const StationsRoute = StationsRouteImport.update({
   id: '/stations',
   path: '/stations',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StudentVerificationsRoute = StudentVerificationsRouteImport.update({
+  id: '/student-verifications',
+  path: '/student-verifications',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TicketsRoute = TicketsRouteImport.update({
@@ -137,17 +149,19 @@ export interface FileRoutesByFullPath {
   '/audit-logs': typeof AuditLogsRoute
   '/chatbot': typeof ChatbotRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/green-journey': typeof GreenJourneyRoute
+  '/incidents': typeof IncidentsRoute
   '/login': typeof LoginRoute
   '/map': typeof MapRoute
   '/notifications': typeof NotificationsRoute
   '/period-closing': typeof PeriodClosingRoute
   '/profile': typeof ProfileRoute
-  '/promotions': typeof PromotionsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/revenue': typeof RevenueRoute
   '/settings': typeof SettingsRoute
   '/station-stats': typeof StationStatsRoute
   '/stations': typeof StationsRoute
+  '/student-verifications': typeof StudentVerificationsRoute
   '/tickets': typeof TicketsRoute
   '/trains': typeof TrainsRoute
   '/transactions': typeof TransactionsRoute
@@ -159,17 +173,19 @@ export interface FileRoutesByTo {
   '/audit-logs': typeof AuditLogsRoute
   '/chatbot': typeof ChatbotRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/green-journey': typeof GreenJourneyRoute
+  '/incidents': typeof IncidentsRoute
   '/login': typeof LoginRoute
   '/map': typeof MapRoute
   '/notifications': typeof NotificationsRoute
   '/period-closing': typeof PeriodClosingRoute
   '/profile': typeof ProfileRoute
-  '/promotions': typeof PromotionsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/revenue': typeof RevenueRoute
   '/settings': typeof SettingsRoute
   '/station-stats': typeof StationStatsRoute
   '/stations': typeof StationsRoute
+  '/student-verifications': typeof StudentVerificationsRoute
   '/tickets': typeof TicketsRoute
   '/trains': typeof TrainsRoute
   '/transactions': typeof TransactionsRoute
@@ -182,17 +198,19 @@ export interface FileRoutesById {
   '/audit-logs': typeof AuditLogsRoute
   '/chatbot': typeof ChatbotRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/green-journey': typeof GreenJourneyRoute
+  '/incidents': typeof IncidentsRoute
   '/login': typeof LoginRoute
   '/map': typeof MapRoute
   '/notifications': typeof NotificationsRoute
   '/period-closing': typeof PeriodClosingRoute
   '/profile': typeof ProfileRoute
-  '/promotions': typeof PromotionsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/revenue': typeof RevenueRoute
   '/settings': typeof SettingsRoute
   '/station-stats': typeof StationStatsRoute
   '/stations': typeof StationsRoute
+  '/student-verifications': typeof StudentVerificationsRoute
   '/tickets': typeof TicketsRoute
   '/trains': typeof TrainsRoute
   '/transactions': typeof TransactionsRoute
@@ -206,17 +224,19 @@ export interface FileRouteTypes {
     | '/audit-logs'
     | '/chatbot'
     | '/forgot-password'
+    | '/green-journey'
+    | '/incidents'
     | '/login'
     | '/map'
     | '/notifications'
     | '/period-closing'
     | '/profile'
-    | '/promotions'
     | '/reset-password'
     | '/revenue'
     | '/settings'
     | '/station-stats'
     | '/stations'
+    | '/student-verifications'
     | '/tickets'
     | '/trains'
     | '/transactions'
@@ -228,17 +248,19 @@ export interface FileRouteTypes {
     | '/audit-logs'
     | '/chatbot'
     | '/forgot-password'
+    | '/green-journey'
+    | '/incidents'
     | '/login'
     | '/map'
     | '/notifications'
     | '/period-closing'
     | '/profile'
-    | '/promotions'
     | '/reset-password'
     | '/revenue'
     | '/settings'
     | '/station-stats'
     | '/stations'
+    | '/student-verifications'
     | '/tickets'
     | '/trains'
     | '/transactions'
@@ -250,17 +272,19 @@ export interface FileRouteTypes {
     | '/audit-logs'
     | '/chatbot'
     | '/forgot-password'
+    | '/green-journey'
+    | '/incidents'
     | '/login'
     | '/map'
     | '/notifications'
     | '/period-closing'
     | '/profile'
-    | '/promotions'
     | '/reset-password'
     | '/revenue'
     | '/settings'
     | '/station-stats'
     | '/stations'
+    | '/student-verifications'
     | '/tickets'
     | '/trains'
     | '/transactions'
@@ -273,17 +297,19 @@ export interface RootRouteChildren {
   AuditLogsRoute: typeof AuditLogsRoute
   ChatbotRoute: typeof ChatbotRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
+  GreenJourneyRoute: typeof GreenJourneyRoute
+  IncidentsRoute: typeof IncidentsRoute
   LoginRoute: typeof LoginRoute
   MapRoute: typeof MapRoute
   NotificationsRoute: typeof NotificationsRoute
   PeriodClosingRoute: typeof PeriodClosingRoute
   ProfileRoute: typeof ProfileRoute
-  PromotionsRoute: typeof PromotionsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   RevenueRoute: typeof RevenueRoute
   SettingsRoute: typeof SettingsRoute
   StationStatsRoute: typeof StationStatsRoute
   StationsRoute: typeof StationsRoute
+  StudentVerificationsRoute: typeof StudentVerificationsRoute
   TicketsRoute: typeof TicketsRoute
   TrainsRoute: typeof TrainsRoute
   TransactionsRoute: typeof TransactionsRoute
@@ -327,6 +353,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/green-journey': {
+      id: '/green-journey'
+      path: '/green-journey'
+      fullPath: '/green-journey'
+      preLoaderRoute: typeof GreenJourneyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/incidents': {
+      id: '/incidents'
+      path: '/incidents'
+      fullPath: '/incidents'
+      preLoaderRoute: typeof IncidentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -362,13 +402,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/promotions': {
-      id: '/promotions'
-      path: '/promotions'
-      fullPath: '/promotions'
-      preLoaderRoute: typeof PromotionsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/reset-password': {
       id: '/reset-password'
       path: '/reset-password'
@@ -402,6 +435,13 @@ declare module '@tanstack/react-router' {
       path: '/stations'
       fullPath: '/stations'
       preLoaderRoute: typeof StationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/student-verifications': {
+      id: '/student-verifications'
+      path: '/student-verifications'
+      fullPath: '/student-verifications'
+      preLoaderRoute: typeof StudentVerificationsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/tickets': {
@@ -441,17 +481,19 @@ const rootRouteChildren: RootRouteChildren = {
   AuditLogsRoute: AuditLogsRoute,
   ChatbotRoute: ChatbotRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
+  GreenJourneyRoute: GreenJourneyRoute,
+  IncidentsRoute: IncidentsRoute,
   LoginRoute: LoginRoute,
   MapRoute: MapRoute,
   NotificationsRoute: NotificationsRoute,
   PeriodClosingRoute: PeriodClosingRoute,
   ProfileRoute: ProfileRoute,
-  PromotionsRoute: PromotionsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   RevenueRoute: RevenueRoute,
   SettingsRoute: SettingsRoute,
   StationStatsRoute: StationStatsRoute,
   StationsRoute: StationsRoute,
+  StudentVerificationsRoute: StudentVerificationsRoute,
   TicketsRoute: TicketsRoute,
   TrainsRoute: TrainsRoute,
   TransactionsRoute: TransactionsRoute,

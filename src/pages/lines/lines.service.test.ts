@@ -10,8 +10,13 @@ import {
   type LineApprovalPayload,
 } from "@/lib/network";
 import { approvalsStore } from "@/mocks/admin";
-import { lineStationRows, lineStationsStore } from "@/mocks/metro";
-import { fareForDistance, moveRow } from "@/pages/lines/lines.service";
+import { lineStationRows, lineStationsStore, stations } from "@/mocks/metro";
+import {
+  buildLine3DModel,
+  fareForDistance,
+  moveRow,
+  visibleLabelIds,
+} from "@/pages/lines/lines.service";
 
 const seedApprovals = [...approvalsStore.get()];
 afterEach(() => approvalsStore.set(() => seedApprovals));
@@ -93,5 +98,58 @@ describe("requestLineOrderChange", () => {
     applyLineOrderApproval(payload);
     expect(lineStationRows("L2").map((r) => r.stationId)).toEqual(moved.map((r) => r.stationId));
     lineStationsStore.set(() => before);
+  });
+});
+
+describe("visibleLabelIds", () => {
+  const label = (id: string, x: number, y: number, priority = false) => ({
+    id,
+    text: "Nhãn ga mẫu",
+    x,
+    y,
+    priority,
+  });
+
+  it("ẩn nhãn đè lên nhau, giữ nhãn ở xa", () => {
+    const ids = visibleLabelIds([label("A", 0, 0), label("B", 10, 2), label("C", 0, 100)]);
+    expect([...ids]).toEqual(["A", "C"]);
+  });
+
+  it("nhãn ưu tiên thắng khi đè nhau, kể cả đứng sau trong danh sách", () => {
+    const ids = visibleLabelIds([label("A", 0, 0), label("B", 10, 2, true)]);
+    expect([...ids]).toEqual(["B"]);
+  });
+});
+
+describe("buildLine3DModel", () => {
+  const rowsOf = (lineId: string) => chainage(lineStationRows(lineId));
+
+  it("Tuyến 1: lý trình tăng dần, kết cấu ngầm → chuyển tiếp → trên cao, có depot", () => {
+    const rows = rowsOf("L1");
+    const model = buildLine3DModel(rows, stations, "L1");
+    expect(model.nodes).toHaveLength(14);
+    expect(model.segments).toHaveLength(13);
+    expect(model.nodes[0]).toMatchObject({
+      name: "Bến Thành",
+      structure: "UNDERGROUND",
+      chainageKm: 0,
+    });
+    expect(model.nodes.at(-1)).toMatchObject({ name: "Suối Tiên", structure: "ELEVATED" });
+    expect(model.segments[2].structure).toBe("TRANSITION");
+    expect(model.depot?.kind).toBe("DEPOT");
+    for (let i = 1; i < model.nodes.length; i++) {
+      expect(model.nodes[i].chainageKm).toBeGreaterThan(model.nodes[i - 1].chainageKm);
+    }
+    // Khớp với số liệu ở "Tổng hợp tuyến", vì cùng lấy lý trình từ line_station.
+    expect(model.totalKm).toBe(rows.at(-1)!.km);
+    const sum = Object.values(model.lengthByStructure).reduce((a, b) => a + b, 0);
+    expect(sum).toBeCloseTo(model.totalKm, 6);
+  });
+
+  it("dựng theo thứ tự đang chỉnh và bỏ qua mã ga không tồn tại", () => {
+    const rows = [...rowsOf("L1")].reverse();
+    const model = buildLine3DModel([...rows, { stationId: "NOPE", km: 99 }], stations, "L1");
+    expect(model.nodes[0].name).toBe("Suối Tiên");
+    expect(model.nodes).toHaveLength(14);
   });
 });

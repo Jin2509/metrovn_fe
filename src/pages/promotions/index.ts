@@ -1,1 +1,1 @@
-export { PromotionsPage } from "@/pages/promotions/PromotionsPage";
+export { PromotionListPanel } from "@/pages/promotions/PromotionListPanel";

@@ -23,7 +23,7 @@ export function ApprovalDetailSheet({
             <SheetHeader>
               <SheetTitle>{approval.title}</SheetTitle>
             </SheetHeader>
-            <div className="space-y-4 px-4 text-sm">
+            <div className="space-y-4 text-sm">
               <p className="text-muted-foreground">
                 {approvalLabel[approval.type]} · gửi bởi {approval.by} lúc {approval.at}
               </p>

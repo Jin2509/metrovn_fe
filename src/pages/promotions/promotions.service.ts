@@ -21,7 +21,7 @@ export function createPromotion(draft: PromotionDraft): string | null {
     },
     ...promos,
   ]);
-  submitApproval("PROMOTION", `Khuyến mãi: ${draft.name}`, [
+  submitApproval("PROMOTION", `Ưu đãi: ${draft.name}`, [
     { field: "Giảm", old: "—", new: `${discount}%` },
     {
       field: "Thời gian",

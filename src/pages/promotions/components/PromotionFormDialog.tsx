@@ -29,7 +29,7 @@ export function PromotionFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Tạo khuyến mãi</DialogTitle>
+          <DialogTitle>Tạo chương trình ưu đãi</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <div>

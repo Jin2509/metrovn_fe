@@ -130,8 +130,8 @@ export const faqStore = createStore<ChatbotFaq[]>([
     category: "LOYALTY",
     question: "Điểm tích lũy được cộng như thế nào?",
     answer:
-      "Mỗi giao dịch mua vé hoặc gửi xe thành công được cộng điểm theo hệ số của hạng thành viên hiện tại.",
-    keywords: "điểm, tích điểm, hạng thành viên",
+      "Mỗi vé lượt đi xong được cộng CPoint theo lượng CO₂ bớt được so với đi xe máy (100 CPoint cho mỗi kg CO₂). CPoint không bị trừ khi dùng; đạt mốc là lên cấp và được giảm giá vé.",
+    keywords: "điểm, tích điểm, cpoint, hành trình xanh, hạng thành viên",
     status: "ACTIVE",
     createdBy: "Nguyễn Văn An",
     createdAt: "2026-09-06 14:20",

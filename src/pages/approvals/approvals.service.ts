@@ -7,6 +7,7 @@ import {
   type StationApprovalPayload,
 } from "@/lib/network";
 import type { ApprovalDecisionStatus } from "@/pages/approvals/approvals.types";
+import { applyGreenConfig } from "@/pages/green/green.service";
 import { applyOperationDecision } from "@/pages/trains/trains.service";
 
 export function applyApprovalDecision(
@@ -31,6 +32,8 @@ export function applyApprovalDecision(
 
   if (approval.type === "LINE" && status === "APPROVED")
     applyLineOrderApproval(approval.payload as LineApprovalPayload);
+
+  if (approval.type === "GREEN_POLICY" && status === "APPROVED") applyGreenConfig(approval.payload);
 
   if (approval.type === "PROMOTION")
     promosStore.set((promotions) =>

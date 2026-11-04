@@ -14,7 +14,7 @@ import {
   stationsStore,
   type LineStation,
 } from "@/mocks/metro";
-import { moveRow, renumber } from "@/pages/lines/lines.service";
+import { buildLine3DModel, moveRow, renumber } from "@/pages/lines/lines.service";
 
 export function useLines() {
   const all = lineStationsStore.use();
@@ -34,6 +34,11 @@ export function useLines() {
       (a.payload as LineApprovalPayload)?.lineId === lineId,
   ).length;
   const withChainage = useMemo(() => chainage([...rows].sort((a, b) => a.order - b.order)), [rows]);
+  // Mô hình 3D bám theo thứ tự đang chỉnh để xem trước ngay khi kéo thả.
+  const model3d = useMemo(
+    () => buildLine3DModel(withChainage, stations, lineId),
+    [withChainage, stations, lineId],
+  );
 
   const selectLine = (id: string) => {
     setLineId(id);
@@ -75,6 +80,7 @@ export function useLines() {
     selectLine,
     rows,
     withChainage,
+    model3d,
     stationName: (id: string) => stations.find((s) => s.id === id)?.name ?? id,
     candidates: stations.filter(
       (s) => !rows.some((r) => r.stationId === s.id) && s.status !== "INACTIVE",

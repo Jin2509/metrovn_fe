@@ -1,6 +1,6 @@
-import { LazyMap } from "@/components/lazy-map";
 import { Section } from "@/components/shared";
 import { FareTable } from "@/pages/lines/components/FareTable";
+import { LineMapPreview } from "@/pages/lines/components/LineMapPreview";
 import { LineSelector } from "@/pages/lines/components/LineSelector";
 import { LineStationEditor } from "@/pages/lines/components/LineStationEditor";
 import { useLines } from "@/pages/lines/hooks/useLines";
@@ -42,11 +42,9 @@ export function LinesPanel() {
           {l.line.status === "ACTIVE" && (
             <FareTable key={l.lineId} points={l.withChainage} nameOf={l.stationName} />
           )}
-          <Section title="Bản đồ tuyến">
-            <LazyMap height={360} visibleLines={[l.lineId]} showBus={false} />
-          </Section>
         </div>
       </div>
+      <LineMapPreview line={l.line} model={l.model3d} />
     </>
   );
 }
