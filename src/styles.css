@@ -167,3 +167,176 @@
   font-family: var(--font-family-sans);
   border-radius: var(--radius);
 }
+
+/*
+ * Hiệu ứng mở màn của trang đăng nhập (xem AuthPageLayout). Hiệu ứng chạy đúng lúc React hydrate, khi luồng
+ * chính đang bận, nên chỉ animate transform/opacity của từng lớp riêng để GPU tự chạy, không vẽ lại mỗi
+ * khung hình. Đừng dùng clip-path, filter động hay animate phần tử con trong SVG lớn ở đây: sẽ bị khựng.
+ * Riêng vệt sáng trên chữ phải vẽ lại, nhưng vùng vẽ nhỏ và chạy sau khi hydrate gần xong.
+ * Kết thúc đúng ở trạng thái tĩnh; tắt hẳn khi người dùng chọn giảm chuyển động.
+ */
+.auth-sparkle,
+.auth-map-glow,
+.auth-map-ping {
+  opacity: 0;
+}
+
+.auth-map-glow {
+  fill: #d8fbff;
+}
+
+.auth-map-glow path {
+  fill: none;
+  stroke: #5ff0f7;
+  stroke-width: 2.5px;
+  stroke-linejoin: round;
+}
+
+.auth-map-ping {
+  fill: var(--sidebar-primary);
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .auth-intro .auth-rise {
+    animation: auth-rise 700ms cubic-bezier(0.22, 1, 0.36, 1) var(--auth-delay, 0ms) backwards;
+  }
+
+  .auth-intro .auth-shine {
+    color: transparent;
+    background: linear-gradient(100deg, #fff 42%, #7fe9f0 50%, #fff 58%) 100% 0 / 300% 100%;
+    background-clip: text;
+    animation: auth-shine 1500ms ease-in-out 500ms backwards;
+  }
+
+  /* Vệt sáng lướt qua thẻ form, chỉ ở bản rộng vì bản hẹp không có khung thẻ. */
+  @media (min-width: 64rem) {
+    .auth-intro .auth-card {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .auth-intro .auth-card::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 45%;
+      pointer-events: none;
+      background: linear-gradient(90deg, transparent, rgb(255 255 255 / 14%), transparent);
+      transform: translateX(-110%) skewX(-15deg);
+      animation: auth-card-shine 1300ms ease-in-out 700ms;
+    }
+  }
+
+  .auth-intro .auth-sparkle {
+    animation: auth-twinkle 1300ms ease-in-out 2;
+  }
+
+  /*
+   * Bản đồ trải từ bắc xuống nam: khung cắt trượt xuống, nội dung trượt ngược lại đúng bằng chừng đó nên
+   * đứng yên tại chỗ. Hai lớp cùng thời gian và easing nên luôn khớp nhau.
+   */
+  .auth-intro .auth-map-clip {
+    overflow: hidden;
+    animation: auth-map-clip 1400ms cubic-bezier(0.45, 0.05, 0.55, 0.95) 100ms backwards;
+  }
+
+  .auth-intro .auth-map-slide {
+    animation: auth-map-slide 1400ms cubic-bezier(0.45, 0.05, 0.55, 0.95) 100ms backwards;
+  }
+
+  /* Viền và các chấm sáng nhấp nháy mỗi 4 giây, trên mọi trang chưa đăng nhập. Lớp này chỉ đổi opacity nên chạy lặp vô hạn vẫn không vẽ lại. */
+  .auth-map-glow {
+    filter: drop-shadow(0 0 6px #00bec7);
+    animation: auth-map-pulse 4000ms ease-in-out 1000ms infinite;
+  }
+
+  /* Lần mở màn: sáng rực theo mép bản đồ, giữ một nhịp rồi tan, sau đó mới vào nhịp lặp. */
+  .auth-intro .auth-map-glow {
+    animation:
+      auth-map-glow 3400ms ease-in 100ms,
+      auth-map-pulse 4000ms ease-in-out 4000ms infinite;
+  }
+
+  .auth-intro .auth-map-ping {
+    will-change: transform, opacity;
+    animation: auth-ping 1100ms ease-out 1400ms 2;
+  }
+}
+
+@keyframes auth-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
+@keyframes auth-map-clip {
+  from {
+    transform: translateY(-100%);
+  }
+}
+
+@keyframes auth-map-slide {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes auth-map-glow {
+  0%,
+  65% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes auth-map-pulse {
+  0%,
+  60%,
+  100% {
+    opacity: 0;
+  }
+  20%,
+  35% {
+    opacity: 0.85;
+  }
+}
+
+@keyframes auth-shine {
+  from {
+    background-position: 0 0;
+  }
+}
+
+@keyframes auth-card-shine {
+  to {
+    transform: translateX(340%) skewX(-15deg);
+  }
+}
+
+@keyframes auth-twinkle {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(0.3) rotate(0deg);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1) rotate(45deg);
+  }
+}
+
+@keyframes auth-ping {
+  0% {
+    opacity: 0.45;
+    transform: scale(0.4);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.4);
+  }
+}
