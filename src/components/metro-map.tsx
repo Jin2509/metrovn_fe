@@ -49,6 +49,17 @@ function PickLocation({ onPick }: { onPick: (lat: number, lng: number) => void }
   return null;
 }
 
+/** Leaflet không tự biết khung đổi kích thước (ví dụ khi thu gọn sidebar) nên phải báo lại. */
+function FitContainer() {
+  const map = useMap();
+  useEffect(() => {
+    const observer = new ResizeObserver(() => map.invalidateSize());
+    observer.observe(map.getContainer());
+    return () => observer.disconnect();
+  }, [map]);
+  return null;
+}
+
 function Focus({ id }: { id?: string | null | undefined }) {
   const map = useMap();
   useEffect(() => {
@@ -78,6 +89,8 @@ export default function MetroMap({
     <MapContainer
       center={[10.815, 106.73]}
       zoom={12}
+      // Giữ z-index rất cao của Leaflet trong khung bản đồ để không che hộp thoại, ngăn kéo, nhãn gợi ý.
+      className="isolate"
       style={{ height, width: "100%" }}
       scrollWheelZoom
     >
@@ -85,6 +98,7 @@ export default function MetroMap({
         attribution="&copy; OpenStreetMap"
         url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
+      <FitContainer />
       <Focus id={focusStationId} />
       {onPickLocation && <PickLocation onPick={onPickLocation} />}
       {pickedPoint && (

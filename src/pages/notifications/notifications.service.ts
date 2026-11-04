@@ -22,11 +22,12 @@ const toInput = (s: string) => s.replace(" ", "T");
 const fromInput = (s: string) => s.replace("T", " ");
 const parse = (s: string) => new Date(s.replace(" ", "T"));
 
+// Manager theo dõi vận hành nên luôn nhận bản sao, dù nhóm nhận là ai.
 const ROLES_BY_AUDIENCE: Record<AnnouncementAudience, User["role"][]> = {
-  PASSENGER: ["PASSENGER"],
-  STAFF: ["STAFF"],
-  ACCOUNTANT: ["ACCOUNTANT"],
-  ALL: ["PASSENGER", "STAFF", "ACCOUNTANT"],
+  PASSENGER: ["PASSENGER", "MANAGER"],
+  STAFF: ["STAFF", "MANAGER"],
+  ACCOUNTANT: ["ACCOUNTANT", "MANAGER"],
+  ALL: ["PASSENGER", "STAFF", "ACCOUNTANT", "MANAGER"],
 };
 
 /** Số tài khoản đang hoạt động trong nhóm nhận (bảng users, status = ACTIVE). */

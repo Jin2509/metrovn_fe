@@ -51,7 +51,7 @@ export function TrainsPage() {
         onEdit={t.openEdit}
         onSend={t.send}
       />
-      <TrainFleetSection trains={t.trains} onStatusChange={t.changeStatus} />
+      <TrainFleetSection />
       <ConfigEditorDialog
         editor={t.editor}
         onChange={(draft) => t.setEditor((e) => (e ? { ...e, draft } : e))}

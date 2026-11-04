@@ -15,6 +15,7 @@ export function AssignmentsPanel() {
     error,
     assign,
     unassign,
+    pendingIds,
   } = useAssignments();
 
   return (
@@ -29,7 +30,12 @@ export function AssignmentsPanel() {
         error={error}
         onAssign={assign}
       />
-      <StaffAssignmentsSection staff={staff} stations={stations} onUnassign={unassign} />
+      <StaffAssignmentsSection
+        staff={staff}
+        stations={stations}
+        pendingIds={pendingIds}
+        onUnassign={unassign}
+      />
     </div>
   );
 }

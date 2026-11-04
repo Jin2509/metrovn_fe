@@ -21,7 +21,8 @@ export function useApprovals() {
 
   const decide = (decisionStatus: ApprovalDecisionStatus, reason?: string) => {
     if (!selected) return;
-    applyApprovalDecision(selected, decisionStatus, reason);
+    const error = applyApprovalDecision(selected, decisionStatus, reason);
+    if (error) return toast.error(error);
     toast.success(decisionStatus === "APPROVED" ? "Đã phê duyệt" : "Đã từ chối");
     setSelected(null);
     setRejectOpen(false);

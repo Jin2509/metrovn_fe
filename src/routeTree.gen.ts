@@ -21,12 +21,12 @@ import { Route as MapRouteImport } from './routes/map'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as PeriodClosingRouteImport } from './routes/period-closing'
 import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
-import { Route as RevenueRouteImport } from './routes/revenue'
 import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as StationStatsRouteImport } from './routes/station-stats'
 import { Route as StationsRouteImport } from './routes/stations'
 import { Route as StudentVerificationsRouteImport } from './routes/student-verifications'
+import { Route as SystemParamsRouteImport } from './routes/system-params'
 import { Route as TicketsRouteImport } from './routes/tickets'
 import { Route as TrainsRouteImport } from './routes/trains'
 import { Route as TransactionsRouteImport } from './routes/transactions'
@@ -92,24 +92,19 @@ const ProfileRoute = ProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ReportsRoute = ReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
-const RevenueRoute = RevenueRouteImport.update({
-  id: '/revenue',
-  path: '/revenue',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const StationStatsRoute = StationStatsRouteImport.update({
-  id: '/station-stats',
-  path: '/station-stats',
   getParentRoute: () => rootRouteImport,
 } as any)
 const StationsRoute = StationsRouteImport.update({
@@ -120,6 +115,11 @@ const StationsRoute = StationsRouteImport.update({
 const StudentVerificationsRoute = StudentVerificationsRouteImport.update({
   id: '/student-verifications',
   path: '/student-verifications',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SystemParamsRoute = SystemParamsRouteImport.update({
+  id: '/system-params',
+  path: '/system-params',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TicketsRoute = TicketsRouteImport.update({
@@ -156,12 +156,12 @@ export interface FileRoutesByFullPath {
   '/notifications': typeof NotificationsRoute
   '/period-closing': typeof PeriodClosingRoute
   '/profile': typeof ProfileRoute
+  '/reports': typeof ReportsRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/revenue': typeof RevenueRoute
   '/settings': typeof SettingsRoute
-  '/station-stats': typeof StationStatsRoute
   '/stations': typeof StationsRoute
   '/student-verifications': typeof StudentVerificationsRoute
+  '/system-params': typeof SystemParamsRoute
   '/tickets': typeof TicketsRoute
   '/trains': typeof TrainsRoute
   '/transactions': typeof TransactionsRoute
@@ -180,12 +180,12 @@ export interface FileRoutesByTo {
   '/notifications': typeof NotificationsRoute
   '/period-closing': typeof PeriodClosingRoute
   '/profile': typeof ProfileRoute
+  '/reports': typeof ReportsRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/revenue': typeof RevenueRoute
   '/settings': typeof SettingsRoute
-  '/station-stats': typeof StationStatsRoute
   '/stations': typeof StationsRoute
   '/student-verifications': typeof StudentVerificationsRoute
+  '/system-params': typeof SystemParamsRoute
   '/tickets': typeof TicketsRoute
   '/trains': typeof TrainsRoute
   '/transactions': typeof TransactionsRoute
@@ -205,12 +205,12 @@ export interface FileRoutesById {
   '/notifications': typeof NotificationsRoute
   '/period-closing': typeof PeriodClosingRoute
   '/profile': typeof ProfileRoute
+  '/reports': typeof ReportsRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/revenue': typeof RevenueRoute
   '/settings': typeof SettingsRoute
-  '/station-stats': typeof StationStatsRoute
   '/stations': typeof StationsRoute
   '/student-verifications': typeof StudentVerificationsRoute
+  '/system-params': typeof SystemParamsRoute
   '/tickets': typeof TicketsRoute
   '/trains': typeof TrainsRoute
   '/transactions': typeof TransactionsRoute
@@ -231,12 +231,12 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/period-closing'
     | '/profile'
+    | '/reports'
     | '/reset-password'
-    | '/revenue'
     | '/settings'
-    | '/station-stats'
     | '/stations'
     | '/student-verifications'
+    | '/system-params'
     | '/tickets'
     | '/trains'
     | '/transactions'
@@ -255,12 +255,12 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/period-closing'
     | '/profile'
+    | '/reports'
     | '/reset-password'
-    | '/revenue'
     | '/settings'
-    | '/station-stats'
     | '/stations'
     | '/student-verifications'
+    | '/system-params'
     | '/tickets'
     | '/trains'
     | '/transactions'
@@ -279,12 +279,12 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/period-closing'
     | '/profile'
+    | '/reports'
     | '/reset-password'
-    | '/revenue'
     | '/settings'
-    | '/station-stats'
     | '/stations'
     | '/student-verifications'
+    | '/system-params'
     | '/tickets'
     | '/trains'
     | '/transactions'
@@ -304,12 +304,12 @@ export interface RootRouteChildren {
   NotificationsRoute: typeof NotificationsRoute
   PeriodClosingRoute: typeof PeriodClosingRoute
   ProfileRoute: typeof ProfileRoute
+  ReportsRoute: typeof ReportsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
-  RevenueRoute: typeof RevenueRoute
   SettingsRoute: typeof SettingsRoute
-  StationStatsRoute: typeof StationStatsRoute
   StationsRoute: typeof StationsRoute
   StudentVerificationsRoute: typeof StudentVerificationsRoute
+  SystemParamsRoute: typeof SystemParamsRoute
   TicketsRoute: typeof TicketsRoute
   TrainsRoute: typeof TrainsRoute
   TransactionsRoute: typeof TransactionsRoute
@@ -402,6 +402,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reports': {
+      id: '/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof ReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reset-password': {
       id: '/reset-password'
       path: '/reset-password'
@@ -409,25 +416,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/revenue': {
-      id: '/revenue'
-      path: '/revenue'
-      fullPath: '/revenue'
-      preLoaderRoute: typeof RevenueRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/settings': {
       id: '/settings'
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/station-stats': {
-      id: '/station-stats'
-      path: '/station-stats'
-      fullPath: '/station-stats'
-      preLoaderRoute: typeof StationStatsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/stations': {
@@ -442,6 +435,13 @@ declare module '@tanstack/react-router' {
       path: '/student-verifications'
       fullPath: '/student-verifications'
       preLoaderRoute: typeof StudentVerificationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/system-params': {
+      id: '/system-params'
+      path: '/system-params'
+      fullPath: '/system-params'
+      preLoaderRoute: typeof SystemParamsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/tickets': {
@@ -488,12 +488,12 @@ const rootRouteChildren: RootRouteChildren = {
   NotificationsRoute: NotificationsRoute,
   PeriodClosingRoute: PeriodClosingRoute,
   ProfileRoute: ProfileRoute,
+  ReportsRoute: ReportsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
-  RevenueRoute: RevenueRoute,
   SettingsRoute: SettingsRoute,
-  StationStatsRoute: StationStatsRoute,
   StationsRoute: StationsRoute,
   StudentVerificationsRoute: StudentVerificationsRoute,
+  SystemParamsRoute: SystemParamsRoute,
   TicketsRoute: TicketsRoute,
   TrainsRoute: TrainsRoute,
   TransactionsRoute: TransactionsRoute,

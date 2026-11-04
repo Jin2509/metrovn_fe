@@ -1,34 +1,24 @@
 import { ParkingSquare, Ticket } from "lucide-react";
 import { AppShell, PageTabs } from "@/components/app-shell";
+import { CatalogSection } from "@/components/catalog/CatalogSection";
+import { money, StatusBadge } from "@/components/shared";
+import { ticketTypeCatalog } from "@/lib/catalogs";
+import { formatValidity, type TicketTypeRow } from "@/mocks/admin";
 import { ParkingPanel } from "@/pages/parking";
-import { DistancePricesTable } from "@/pages/tickets/components/DistancePricesTable";
-import { TicketTypesTable } from "@/pages/tickets/components/TicketTypesTable";
-import { useTickets } from "@/pages/tickets/hooks/useTickets";
 
 function TicketPricingPanel() {
-  const {
-    ticketTypes,
-    distancePrices,
-    edits,
-    setPriceEdit,
-    effectiveDate,
-    setEffectiveDate,
-    submit,
-    toggleTicketType,
-  } = useTickets();
-
   return (
-    <>
-      <TicketTypesTable ticketTypes={ticketTypes} onToggleStatus={toggleTicketType} />
-      <DistancePricesTable
-        prices={distancePrices}
-        edits={edits}
-        onPriceEdit={setPriceEdit}
-        effectiveDate={effectiveDate}
-        onEffectiveDateChange={setEffectiveDate}
-        onSubmit={submit}
-      />
-    </>
+    <CatalogSection<TicketTypeRow>
+      catalog={ticketTypeCatalog}
+      title="Loại vé"
+      columns={[
+        { h: "Mã", c: (t) => <span className="font-mono text-xs">{t.code}</span> },
+        { h: "Loại vé", c: (t) => <b>{t.name}</b> },
+        { h: "Thời hạn", c: formatValidity },
+        { h: "Giá", c: (t) => money(t.price) },
+        { h: "Trạng thái", c: (t) => <StatusBadge s={t.status} /> },
+      ]}
+    />
   );
 }
 
@@ -39,7 +29,7 @@ export function TicketsPage() {
         tabs={[
           {
             value: "tickets",
-            label: "Loại vé & giá vé",
+            label: "Loại vé",
             icon: Ticket,
             content: <TicketPricingPanel />,
           },

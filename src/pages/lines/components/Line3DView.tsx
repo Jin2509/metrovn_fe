@@ -57,7 +57,15 @@ function sampleSegment(segment: Pick<Line3DSegment, "from" | "to" | "structure">
   });
 }
 
-export function Line3DView({ model, color }: { model: Line3DModel; color: string }) {
+export function Line3DView({
+  model,
+  color,
+  showProfile = true,
+}: {
+  model: Line3DModel;
+  color: string;
+  showProfile?: boolean;
+}) {
   const svgRef = useRef<SVGSVGElement>(null);
   const dragRef = useRef<{ x: number; y: number } | null>(null);
   const [camera, setCamera] = useState<Camera>(DEFAULT_CAMERA);
@@ -388,7 +396,9 @@ export function Line3DView({ model, color }: { model: Line3DModel; color: string
         dễ quan sát.
       </p>
       {selected && <NodeDetails node={selected} model={model} />}
-      <LineProfile model={model} color={color} selectedId={selectedId} onSelect={setSelectedId} />
+      {showProfile && (
+        <LineProfile model={model} color={color} selectedId={selectedId} onSelect={setSelectedId} />
+      )}
     </div>
   );
 }

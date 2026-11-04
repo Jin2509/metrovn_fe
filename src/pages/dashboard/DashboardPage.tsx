@@ -1,37 +1,61 @@
+import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { AppShell } from "@/components/app-shell";
-import { RoleBadge } from "@/components/auth/RoleBadge";
-import { useAuth, type Role } from "@/lib/auth";
+import { Button } from "@/components/ui/button";
+import { useAuth, type ProtectedPath, type Role } from "@/lib/auth";
 import { AccountantDashboard } from "@/pages/dashboard/components/AccountantDashboard";
 import { AdminDashboard } from "@/pages/dashboard/components/AdminDashboard";
 import { ManagerDashboard } from "@/pages/dashboard/components/ManagerDashboard";
 
-const DASHBOARDS: Record<Role, { description: string; Component: () => ReactNode }> = {
+const DASHBOARDS: Record<
+  Role,
+  { Component: () => ReactNode; actions: { label: string; to: ProtectedPath }[] }
+> = {
   ADMIN: {
-    description: "Vận hành mạng lưới, chatbot và các thay đổi đang chờ duyệt",
     Component: AdminDashboard,
+    actions: [
+      { label: "Xem báo cáo", to: "/reports" },
+      { label: "Soạn thông báo", to: "/notifications" },
+    ],
   },
-  MANAGER: {
-    description: "Yêu cầu chờ phê duyệt, doanh thu và chất lượng phục vụ",
-    Component: ManagerDashboard,
-  },
+  MANAGER: { Component: ManagerDashboard, actions: [{ label: "Xem báo cáo", to: "/reports" }] },
   ACCOUNTANT: {
-    description: "Giao dịch cần đối soát, hoàn tiền và tình trạng chốt kỳ",
     Component: AccountantDashboard,
+    actions: [
+      { label: "Chốt kỳ", to: "/period-closing" },
+      { label: "Xuất báo cáo", to: "/reports" },
+    ],
   },
 };
 
-/** Trang tổng quan: mỗi vai trò thấy chỉ số và đầu việc của riêng mình. */
+const today = () =>
+  new Date().toLocaleDateString("vi-VN", {
+    weekday: "long",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+
+/** Trang tổng quan: mỗi vai trò thấy số liệu chính và làm được việc chính ngay tại đây. */
 export function DashboardPage() {
   const { user } = useAuth();
   if (!user) return null;
-  const { description, Component } = DASHBOARDS[user.role];
+  const { Component, actions } = DASHBOARDS[user.role];
 
   return (
     <AppShell
-      title={`Xin chào, ${user.name}`}
-      description={description}
-      actions={<RoleBadge role={user.role} />}
+      title="Tổng quan"
+      description={today()}
+      actions={actions.map((action, index) => (
+        <Button
+          key={action.to}
+          asChild
+          size="sm"
+          variant={index === actions.length - 1 ? "default" : "outline"}
+        >
+          <Link to={action.to}>{action.label}</Link>
+        </Button>
+      ))}
     >
       <Component />
     </AppShell>

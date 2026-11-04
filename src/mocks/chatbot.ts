@@ -68,10 +68,10 @@ export const faqStore = createStore<ChatbotFaq[]>([
   {
     id: "FAQ-01",
     category: "FARE",
-    question: "Giá vé lượt được tính như thế nào?",
+    question: "HopOn có những loại vé nào?",
     answer:
-      "Giá vé lượt tính theo cự ly giữa ga đi và ga đến, theo bảng giá vé lượt đang áp dụng của từng tuyến.",
-    keywords: "giá vé, vé lượt, bao nhiêu tiền",
+      "HopOn có vé ngày, vé 3 ngày, vé tháng và vé tháng HSSV. Trong thời hạn vé, bạn đi được trên toàn mạng lưới, không có vé lượt.",
+    keywords: "giá vé, loại vé, vé ngày, vé tháng, bao nhiêu tiền",
     status: "ACTIVE",
     createdBy: "Nguyễn Văn An",
     createdAt: "2026-09-02 09:00",
@@ -130,7 +130,7 @@ export const faqStore = createStore<ChatbotFaq[]>([
     category: "LOYALTY",
     question: "Điểm tích lũy được cộng như thế nào?",
     answer:
-      "Mỗi vé lượt đi xong được cộng CPoint theo lượng CO₂ bớt được so với đi xe máy (100 CPoint cho mỗi kg CO₂). CPoint không bị trừ khi dùng; đạt mốc là lên cấp và được giảm giá vé.",
+      "Mỗi lần check-in tại ga bạn được cộng CPoint theo loại vé đang dùng: vé ngày 10 điểm, vé 3 ngày 30 điểm, vé tháng 100 điểm. CPoint không bị trừ khi dùng; đạt mốc là lên cấp và được giảm giá vé.",
     keywords: "điểm, tích điểm, cpoint, hành trình xanh, hạng thành viên",
     status: "ACTIVE",
     createdBy: "Nguyễn Văn An",
@@ -167,9 +167,9 @@ const TEMPLATES: Template[] = [
     intent: "FARE_QUERY",
     action: "getFare",
     weight: 26,
-    ask: (s, t) => `Giá vé từ ga ${s} đến ga ${t} là bao nhiêu?`,
+    ask: (s, t) => `Đi từ ga ${s} đến ga ${t} nên mua vé gì?`,
     answer: (s, t) =>
-      `Vé lượt từ ga ${s} đến ga ${t} theo bảng giá hiện hành. Bạn có thể đặt vé trong mục Đặt vé.`,
+      `Từ ga ${s} đến ga ${t} bạn dùng vé ngày, vé 3 ngày hoặc vé tháng. Bạn có thể đặt vé trong mục Đặt vé.`,
   },
   {
     intent: "STATION_INFO",

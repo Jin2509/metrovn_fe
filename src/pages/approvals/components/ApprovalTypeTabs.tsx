@@ -1,7 +1,14 @@
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { approvalLabel, type ApprovalType } from "@/mocks/admin";
 import type { ApprovalTypeTab } from "@/pages/approvals/approvals.types";
 
+/** Lọc theo loại yêu cầu. Danh sách loại dài nên dùng ô chọn thay cho hàng tab. */
 export function ApprovalTypeTabs({
   value,
   onValueChange,
@@ -10,15 +17,18 @@ export function ApprovalTypeTabs({
   onValueChange: (value: ApprovalTypeTab) => void;
 }) {
   return (
-    <Tabs value={value} onValueChange={(nextValue) => onValueChange(nextValue as ApprovalTypeTab)}>
-      <TabsList className="flex-wrap">
-        <TabsTrigger value="ALL">Tất cả</TabsTrigger>
+    <Select value={value} onValueChange={(next) => onValueChange(next as ApprovalTypeTab)}>
+      <SelectTrigger className="w-60" aria-label="Lọc theo loại yêu cầu">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="ALL">Mọi loại yêu cầu</SelectItem>
         {(Object.keys(approvalLabel) as ApprovalType[]).map((type) => (
-          <TabsTrigger key={type} value={type}>
+          <SelectItem key={type} value={type}>
             {approvalLabel[type]}
-          </TabsTrigger>
+          </SelectItem>
         ))}
-      </TabsList>
-    </Tabs>
+      </SelectContent>
+    </Select>
   );
 }

@@ -5,8 +5,6 @@ import { describe, expect, it } from "vitest";
 import { navGroups } from "@/components/layout/nav.config";
 import { routeTree } from "@/routeTree.gen";
 import {
-  ACTION_ACCESS,
-  ACTION_LABELS,
   PUBLIC_PATHS,
   ROLES,
   ROUTE_ACCESS,
@@ -56,7 +54,7 @@ describe("canAccessRoute", () => {
 
   it("Manager: phê duyệt, chính sách, doanh thu và theo dõi chatbot", () => {
     expect(canAccessRoute("MANAGER", "/approvals")).toBe(true);
-    expect(canAccessRoute("MANAGER", "/revenue")).toBe(true);
+    expect(canAccessRoute("MANAGER", "/reports")).toBe(true);
     expect(canAccessRoute("MANAGER", "/chatbot")).toBe(true);
     expect(canAccessRoute("MANAGER", "/users")).toBe(false);
     expect(canAccessRoute("MANAGER", "/settings")).toBe(false);
@@ -75,7 +73,7 @@ describe("canAccessRoute", () => {
   });
 
   it("Kế toán: giao dịch, đối soát, doanh thu, chốt kỳ", () => {
-    for (const path of ["/transactions", "/revenue", "/period-closing", "/station-stats"])
+    for (const path of ["/transactions", "/reports", "/period-closing"])
       expect(canAccessRoute("ACCOUNTANT", path), path).toBe(true);
     expect(canAccessRoute("ACCOUNTANT", "/users")).toBe(false);
     expect(canAccessRoute("ACCOUNTANT", "/approvals")).toBe(false);
@@ -133,15 +131,16 @@ describe("can (thao tác)", () => {
     expect(canAccessRoute("ACCOUNTANT", "/student-verifications")).toBe(false);
   });
 
+  it("tham số hệ thống: Admin đề xuất, Manager chỉ xem, Kế toán không vào", () => {
+    expect(can("ADMIN", "params.edit")).toBe(true);
+    expect(can("MANAGER", "params.edit")).toBe(false);
+    expect(canAccessRoute("MANAGER", "/system-params")).toBe(true);
+    expect(canAccessRoute("ACCOUNTANT", "/system-params")).toBe(false);
+  });
+
   it("Hành trình xanh: Admin cấu hình, Manager duyệt ở hộp phê duyệt", () => {
     expect(canAccessRoute("ADMIN", "/green-journey")).toBe(true);
     expect(canAccessRoute("MANAGER", "/green-journey")).toBe(false);
-  });
-
-  it("mọi thao tác đều có mô tả cho bảng phân quyền", () => {
-    for (const action of Object.keys(ACTION_ACCESS)) {
-      expect(ACTION_LABELS, action).toHaveProperty([action]);
-    }
   });
 });
 

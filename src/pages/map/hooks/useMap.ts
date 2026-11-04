@@ -27,6 +27,7 @@ const SIM_INTERVAL_MS = 5000;
 export function useMap() {
   const [visibleLines, setVisibleLines] = useState(["L1", "L2"]);
   const [showBus, setShowBus] = useState(false);
+  const [busRoute, setBusRoute] = useState<string | null>(null);
   const [showTrains, setShowTrains] = useState(true);
   const [selectedStationId, setSelectedStationId] = useState<string | null>(null);
   const stations = stationsStore.use();
@@ -94,6 +95,8 @@ export function useMap() {
       setVisibleLines((cur) => (visible ? [...cur, lineId] : cur.filter((l) => l !== lineId))),
     showBus,
     setShowBus,
+    busRoute,
+    setBusRoute,
     showTrains,
     setShowTrains,
     stationStates,

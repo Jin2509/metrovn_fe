@@ -239,7 +239,7 @@ export type LineApprovalPayload = { lineId: string; rows: LineStation[] };
 
 /**
  * Admin đề xuất thứ tự ga / lý trình mới cho một tuyến — không ghi vào kho dữ liệu, chỉ tạo
- * yêu cầu phê duyệt (LINE) cho Manager vì thay đổi này ảnh hưởng trực tiếp đến giá vé lượt và
+ * yêu cầu phê duyệt (LINE) cho Manager vì thay đổi này ảnh hưởng trực tiếp đến
  * tra cứu lộ trình. Gọi sau khi `validateLineOrder` đã qua. Trả về `null` khi gửi thành công.
  */
 export function requestLineOrderChange(lineId: string, rows: LineStation[]): string | null {

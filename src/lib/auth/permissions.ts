@@ -32,11 +32,11 @@ const EVERYONE: readonly Role[] = ROLES;
 
 export const ROUTE_ACCESS = {
   "/": EVERYONE,
-  // Mạng lưới (tab: bản đồ/xe buýt · danh sách ga/tuyến)
+  // Mạng lưới (bản đồ có lớp xe buýt · tab danh sách ga/tuyến)
   "/map": ADMIN,
   "/stations": ADMIN,
   "/trains": ADMIN,
-  // Kinh doanh (tab: loại vé/gửi xe · CPoint/nâng hạng/chính sách/chương trình ưu đãi).
+  // Kinh doanh (tab: loại vé/gửi xe · CPoint/nâng hạng/chính sách ưu đãi).
   // Manager không vào trang này: duyệt cấu hình ở Hộp phê duyệt, xem ở Chính sách đang áp dụng.
   "/tickets": ADMIN,
   "/green-journey": ADMIN,
@@ -50,17 +50,17 @@ export const ROUTE_ACCESS = {
   "/approvals": MANAGER,
   // Sự cố nhân viên ga báo từ app: chỉ Admin và Manager.
   "/incidents": OVERSIGHT,
-  // Tài chính (tab: tra cứu giao dịch/đối soát)
+  // Tài chính (đối soát nằm ngay trong danh sách giao dịch)
   "/transactions": FINANCE,
-  "/revenue": EVERYONE,
   "/period-closing": ACCOUNTANT,
-  // Giám sát — doanh thu + lưu lượng theo ga: Admin vận hành, Manager theo dõi, Kế toán đối chiếu.
-  // Tab "lưu lượng theo giờ" bên trong chỉ dành cho Admin (xem ACTION_ACCESS).
-  "/station-stats": EVERYONE,
+  // Giám sát: doanh thu và lưu lượng theo ga. Xuất báo cáo và biểu đồ theo giờ giới hạn ở ACTION_ACCESS.
+  "/reports": EVERYONE,
   "/audit-logs": ADMIN,
   // Hệ thống (tab: tài khoản/phân công ga)
   "/users": ADMIN,
   "/settings": ADMIN,
+  // Tham số nghiệp vụ dùng chung: Admin đề xuất (ACTION_ACCESS), Manager xem và duyệt ở Hộp phê duyệt.
+  "/system-params": OVERSIGHT,
   // Cài đặt tài khoản cá nhân (hồ sơ, mật khẩu, thông báo, giao diện) — mở từ thẻ người dùng.
   "/profile": EVERYONE,
 } as const satisfies Record<string, readonly Role[]>;
@@ -85,23 +85,13 @@ export const ACTION_ACCESS = {
   "incidents.manage": OVERSIGHT,
   /** Quyết định hồ sơ sinh viên máy không tự xử lý được, như các phê duyệt khác của Manager. */
   "student.review": MANAGER,
-  /** Chỉnh ngưỡng tự duyệt và danh sách trường. */
+  /** Đề xuất thêm/xóa trường trong danh sách tự duyệt. */
   "student.configure": ADMIN,
+  /** Đề xuất thay đổi tham số hệ thống. */
+  "params.edit": ADMIN,
 } as const satisfies Record<string, readonly Role[]>;
 
 export type Action = keyof typeof ACTION_ACCESS;
-
-/** Mô tả thao tác cho bảng phân quyền ở trang Cấu hình hệ thống. */
-export const ACTION_LABELS: Record<Action, string> = {
-  "revenue.export": "Xuất báo cáo doanh thu",
-  "stats.hourlyFlow": "Xem lưu lượng theo khung giờ",
-  "chatbot.conversations": "Đọc hội thoại chatbot của hành khách",
-  "chatbot.manage": "Quản lý kho tri thức chatbot (FAQ)",
-  "reconciliation.confirm": "Xác nhận đối soát giao dịch",
-  "incidents.manage": "Xử lý sự cố và duyệt báo hành khách",
-  "student.review": "Xem xét hồ sơ xác nhận sinh viên",
-  "student.configure": "Chỉnh quy tắc tự động xác nhận sinh viên",
-};
 
 /** Các route không cần đăng nhập. */
 export const PUBLIC_PATHS = ["/login", "/forgot-password", "/reset-password"] as const;

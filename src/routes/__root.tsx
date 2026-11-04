@@ -12,6 +12,7 @@ import { useEffect, type ReactNode } from "react";
 
 import { AuthGate } from "@/components/auth/AuthGate";
 import { Toaster } from "@/components/ui/sonner";
+import { initSidebar } from "@/lib/sidebar";
 import { initTheme } from "@/lib/theme";
 import appCss from "../styles.css?url";
 
@@ -77,8 +78,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Metro Admin TP.HCM" },
-      { name: "description", content: "Website quản trị Metro TP.HCM" },
+      { title: "HopOn" },
+      { name: "description", content: "Website quản trị HopOn" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -91,7 +92,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap",
       },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      // `?v=` buộc trình duyệt bỏ icon cũ còn lưu trong cache của localhost hoặc tên miền.
+      { rel: "icon", href: "/favicon.svg?v=2", type: "image/svg+xml" },
+      { rel: "alternate icon", href: "/favicon.ico?v=2", type: "image/x-icon" },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon.png?v=2" },
     ],
   }),
   shellComponent: RootShell,
@@ -116,7 +120,10 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-  useEffect(() => initTheme(), []);
+  useEffect(() => {
+    initSidebar();
+    return initTheme();
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>

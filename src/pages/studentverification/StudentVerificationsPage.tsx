@@ -12,7 +12,8 @@ import {
   approveStudent,
   isOverdue,
   rejectStudent,
-  REVIEW_SLA_HOURS,
+  revokeStudent,
+  reviewSlaHours,
   studentStats,
   studentVerificationsStore,
 } from "@/pages/studentverification/student.service";
@@ -78,7 +79,7 @@ function SubmissionTable({
           c: (item) => (
             <span className="flex flex-wrap items-center gap-2 whitespace-nowrap">
               {formatDateTime(item.submittedAt)}
-              {isOverdue(item) && <Badge variant="destructive">Quá {REVIEW_SLA_HOURS} giờ</Badge>}
+              {isOverdue(item) && <Badge variant="destructive">Quá {reviewSlaHours()} giờ</Badge>}
             </span>
           ),
         },
@@ -98,6 +99,7 @@ export function StudentVerificationsPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [rejecting, setRejecting] = useState(false);
   const selected = items.find((item) => item.id === selectedId) ?? null;
+  const revoking = selected?.status === "VERIFIED";
   const stats = studentStats(items);
   const queue = items
     .filter((item) => item.status === "NEEDS_REVIEW")
@@ -117,14 +119,14 @@ export function StudentVerificationsPage() {
         <StatCard
           label="Cần xem xét"
           value={stats.needsReview}
-          hint={`Xử lý trong ${REVIEW_SLA_HOURS} giờ, như app đã báo`}
+          hint={`Xử lý trong ${reviewSlaHours()} giờ, như app đã báo`}
           icon={Hand}
           tone={stats.needsReview ? "accent" : "muted"}
         />
         <StatCard
           label="Đã xác nhận"
           value={stats.verified}
-          hint="Đang hưởng ưu đãi sinh viên"
+          hint="Đang hưởng giá sinh viên"
           icon={UserRoundCheck}
         />
       </div>
@@ -170,15 +172,20 @@ export function StudentVerificationsPage() {
           setSelectedId(null);
         }}
         onReject={() => setRejecting(true)}
+        onRevoke={() => setRejecting(true)}
       />
       <ReasonDialog
         open={rejecting}
-        title="Từ chối hồ sơ"
-        confirmLabel="Từ chối"
+        title={revoking ? "Thu hồi xác nhận sinh viên" : "Từ chối hồ sơ"}
+        confirmLabel={revoking ? "Thu hồi" : "Từ chối"}
         onClose={() => setRejecting(false)}
         onConfirm={(reason) => {
-          if (selected) rejectStudent(selected, reason);
-          toast.success("Đã từ chối. Hành khách sẽ thấy lý do và gửi lại được.");
+          if (selected) (revoking ? revokeStudent : rejectStudent)(selected, reason);
+          toast.success(
+            revoking
+              ? "Đã thu hồi. Hành khách mất giá sinh viên và sẽ thấy lý do."
+              : "Đã từ chối. Hành khách sẽ thấy lý do và gửi lại được.",
+          );
           setRejecting(false);
           setSelectedId(null);
         }}

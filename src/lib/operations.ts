@@ -85,8 +85,3 @@ export function checkOperationConfig(
     warnings.push("Dùng hết số tàu sẵn có, không còn tàu dự phòng khi có sự cố");
   return { errors, capacity, warnings };
 }
-
-export function setTrainStatus(train: Train, status: TrainStatus) {
-  trainsStore.set((list) => list.map((t) => (t.id === train.id ? { ...t, status } : t)));
-  logAction("Cập nhật trạng thái tàu", `${train.code}: ${TRAIN_STATUS_LABELS[status]}`);
-}

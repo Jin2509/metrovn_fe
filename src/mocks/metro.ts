@@ -341,5 +341,4 @@ export const hourlyFlow = Array.from({ length: 18 }, (_, i) => {
   return { hour: `${h}h`, luot: peak ? 9000 + i * 120 : 2500 + ((i * 431) % 2500) };
 });
 
-export const vnd = (n: number) =>
-  new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(n);
+export const vnd = (n: number) => `${new Intl.NumberFormat("vi-VN").format(n)} VND`;

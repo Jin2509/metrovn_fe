@@ -1,4 +1,4 @@
-import { AlertTriangle, BadgePercent, Clock, Coins, Crown, Send, Undo2, Zap } from "lucide-react";
+import { AlertTriangle, Clock, Coins, Crown, Send, Undo2, Zap } from "lucide-react";
 import { AppShell, PageTabs } from "@/components/app-shell";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -6,7 +6,6 @@ import { CpointPanel } from "@/pages/green/components/CpointPanel";
 import { OfferPolicyPanel } from "@/pages/green/components/OfferPolicyPanel";
 import { TierPanel } from "@/pages/green/components/TierPanel";
 import { useGreenConfig } from "@/pages/green/hooks/useGreenConfig";
-import { PromotionListPanel } from "@/pages/promotions";
 
 export function GreenJourneyPage() {
   const form = useGreenConfig();
@@ -74,12 +73,6 @@ export function GreenJourneyPage() {
             label: "Chính sách ưu đãi",
             icon: Zap,
             content: <OfferPolicyPanel form={form} />,
-          },
-          {
-            value: "campaigns",
-            label: "Chương trình ưu đãi",
-            icon: BadgePercent,
-            content: <PromotionListPanel />,
           },
         ]}
       />

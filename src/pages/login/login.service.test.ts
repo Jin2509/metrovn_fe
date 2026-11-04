@@ -23,8 +23,8 @@ describe("validateLoginDraft", () => {
 describe("resolveRedirectTarget", () => {
   it("quay lại trang đang xem nếu vai trò được phép", () => {
     expect(resolveRedirectTarget("/users", "ADMIN")).toBe("/users");
-    expect(resolveRedirectTarget("/revenue?from=2026-10-01", "MANAGER")).toBe(
-      "/revenue?from=2026-10-01",
+    expect(resolveRedirectTarget("/reports?from=2026-10-01", "MANAGER")).toBe(
+      "/reports?from=2026-10-01",
     );
   });
 

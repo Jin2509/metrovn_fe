@@ -1,13 +1,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
-import { availableTrains, setTrainStatus, TRAIN_STATUS_LABELS } from "@/lib/operations";
-import {
-  operationConfigsStore,
-  trainsStore,
-  type OperationConfig,
-  type Train,
-  type TrainStatus,
-} from "@/mocks/operations";
+import { availableTrains } from "@/lib/operations";
+import { operationConfigsStore, trainsStore, type OperationConfig } from "@/mocks/operations";
 import {
   assessConfig,
   newDraftFrom,
@@ -41,11 +35,6 @@ export function useTrains() {
     toast.success("Đã gửi Manager duyệt");
   };
 
-  const changeStatus = (t: Train, status: TrainStatus) => {
-    setTrainStatus(t, status);
-    toast.success(`${t.code}: ${TRAIN_STATUS_LABELS[status]}`);
-  };
-
   return {
     trains,
     configs,
@@ -57,6 +46,5 @@ export function useTrains() {
     openEdit: (c: OperationConfig) => setEditor({ id: c.id, draft: { ...c } }),
     saveEditor,
     send,
-    changeStatus,
   };
 }

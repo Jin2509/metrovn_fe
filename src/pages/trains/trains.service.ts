@@ -2,6 +2,7 @@ import { getActorName } from "@/lib/auth/session.store";
 import { runningTimeMinutes } from "@/lib/network";
 import { availableTrains, checkOperationConfig, minTrainsNeeded } from "@/lib/operations";
 import { logAction, submitApproval } from "@/mocks/admin";
+import { getParam } from "@/mocks/system-params";
 import { operationConfigsStore, type OperationConfig } from "@/mocks/operations";
 import type { ConfigDraft } from "@/pages/trains/trains.types";
 
@@ -21,7 +22,7 @@ export function newDraftFrom(base: OperationConfig | undefined, lineId = "L1"): 
     numberOfTrains: base?.numberOfTrains ?? 10,
     headwayMinutes: base?.headwayMinutes ?? 6,
     runningTimeMinutes: runningTimeMinutes(lineId),
-    turnaroundTimeMinutes: base?.turnaroundTimeMinutes ?? 4,
+    turnaroundTimeMinutes: base?.turnaroundTimeMinutes ?? getParam("ops.defaultTurnaroundMinutes"),
     startTime: base?.startTime ?? "05:00",
     endTime: base?.endTime ?? "22:00",
     effectiveFrom: today(),

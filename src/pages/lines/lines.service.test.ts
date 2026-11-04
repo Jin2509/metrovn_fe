@@ -11,37 +11,18 @@ import {
 } from "@/lib/network";
 import { approvalsStore } from "@/mocks/admin";
 import { lineStationRows, lineStationsStore, stations } from "@/mocks/metro";
-import {
-  buildLine3DModel,
-  fareForDistance,
-  moveRow,
-  visibleLabelIds,
-} from "@/pages/lines/lines.service";
+import { buildLine3DModel, moveRow, visibleLabelIds } from "@/pages/lines/lines.service";
 
 const seedApprovals = [...approvalsStore.get()];
 afterEach(() => approvalsStore.set(() => seedApprovals));
 
-const brackets = [
-  { from: 0, to: 5, price: 7000 },
-  { from: 5, to: 10, price: 12000 },
-  { from: 10, to: 15, price: 16000 },
-  { from: 15, to: 20, price: 20000 },
-];
-
-describe("lý trình và giá vé", () => {
+describe("lý trình", () => {
   it("Tuyến 1 dài khoảng 19,7 km và chạy một chiều khoảng 30–35 phút", () => {
     const rows = chainage(lineStationRows("L1"));
     expect(rows.at(-1)!.km).toBeGreaterThan(19);
     expect(rows.at(-1)!.km).toBeLessThan(20.5);
     expect(runningTimeMinutes("L1")).toBeGreaterThanOrEqual(30);
     expect(runningTimeMinutes("L1")).toBeLessThanOrEqual(36);
-  });
-
-  it("giá theo bậc cự ly, biên trên thuộc bậc dưới", () => {
-    expect(fareForDistance(0.7, brackets).price).toBe(7000);
-    expect(fareForDistance(5, brackets).price).toBe(7000);
-    expect(fareForDistance(5.01, brackets).price).toBe(12000);
-    expect(fareForDistance(25, brackets).price).toBe(20000);
   });
 });
 

@@ -1,22 +1,25 @@
 import { DataTable, Section } from "@/components/shared";
+import { ticketTypesStore } from "@/mocks/admin";
 import type { GreenConfig } from "@/mocks/green";
-import { cpointOf } from "@/pages/green/green.service";
+import { pointsPerCheckin } from "@/pages/green/green.service";
 
 export function GreenPolicyTable({ config }: { config: GreenConfig }) {
   const { policy } = config;
-  const combine =
-    policy.combineMode === "SEQUENTIAL" ? "cộng dồn lần lượt" : "chỉ lấy mức cao nhất";
+  const points = ticketTypesStore
+    .use()
+    .filter((type) => pointsPerCheckin(type.id, config) > 0)
+    .map((type) => `${type.name} ${pointsPerCheckin(type.id, config)}`)
+    .join(", ");
   return (
     <Section
       title="Hành trình xanh"
-      description={`${config.cpointPerKg} CPoint mỗi kg CO₂ · sinh viên giảm ${policy.studentPercent}% · ưu đãi ${combine}`}
+      description={`Điểm mỗi check-in: ${points} · sinh viên giảm ${policy.studentPercent}%`}
     >
       <DataTable
         rows={config.tiers}
         cols={[
           { h: "Cấp", c: (tier) => tier.name },
-          { h: "Mốc CO₂", c: (tier) => `${tier.fromKg} kg` },
-          { h: "Mốc CPoint", c: (tier) => cpointOf(tier.fromKg, config).toLocaleString("vi-VN") },
+          { h: "Mốc CPoint", c: (tier) => tier.fromCpoint.toLocaleString("vi-VN") },
           { h: "Giảm", c: (tier) => `${tier.discountPercent}%` },
         ]}
       />

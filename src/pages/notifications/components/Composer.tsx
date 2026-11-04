@@ -128,6 +128,9 @@ export function Composer({ onDone }: { onDone: () => void }) {
                 Kế toán dùng web quản trị nên chỉ nhận qua email.
               </p>
             )}
+            <p className="text-xs text-muted-foreground">
+              Manager luôn nhận bản sao để theo dõi vận hành.
+            </p>
             <FieldError msg={errors.channels} show={showErrors} />
           </div>
 

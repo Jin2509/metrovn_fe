@@ -8,7 +8,7 @@ function BrandMark() {
       <FutuMascot className="h-12 w-12 lg:h-14 lg:w-14" />
       <div>
         <p className="text-xl font-bold tracking-wide text-white">HopOn</p>
-        <p className="text-xs text-sidebar-foreground/80">Cổng quản trị Metro TP.HCM</p>
+        <p className="text-xs text-sidebar-foreground/80">Cổng quản trị</p>
       </div>
     </div>
   );
@@ -54,9 +54,7 @@ export function AuthPageLayout({
               Trang quản lý hệ thống đường sắt đô thị TP. Hồ Chí Minh
             </p>
           </div>
-          <p className="hidden text-xs text-sidebar-foreground/60 lg:block">
-            © 2026 Metro TP. Hồ Chí Minh
-          </p>
+          <p className="hidden text-xs text-sidebar-foreground/60 lg:block">© 2026 HopOn</p>
         </section>
         <main className="flex flex-col justify-end px-6 pt-10 pb-8 lg:justify-center lg:px-0 lg:py-12">
           <div className="space-y-6 [&_input]:border-white/15 [&_input]:bg-white/[0.09] [&_input]:text-white [&_input]:placeholder:text-sidebar-foreground/55 lg:rounded-2xl lg:border lg:border-white/10 lg:bg-white/[0.05] lg:p-8 lg:shadow-2xl lg:shadow-black/30 lg:backdrop-blur-md">

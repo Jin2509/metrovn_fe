@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { tabSearch } from "@/components/app-shell";
 import { seo } from "@/lib/seo";
 import { MapPage } from "@/pages/map";
 
@@ -8,6 +7,5 @@ export const Route = createFileRoute("/map")({
     "Bản đồ hệ thống",
     "Tuyến, ga, thông báo vận hành đang hiệu lực, vị trí tàu mô phỏng và xe buýt kết nối.",
   ),
-  validateSearch: tabSearch,
   component: MapPage,
 });

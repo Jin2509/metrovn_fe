@@ -4,10 +4,7 @@ import { seo } from "@/lib/seo";
 import { GreenJourneyPage } from "@/pages/green";
 
 export const Route = createFileRoute("/green-journey")({
-  head: seo(
-    "Hành trình xanh",
-    "Cấu hình CPoint, nâng hạng thành viên và chính sách áp dụng ưu đãi.",
-  ),
+  head: seo("Hành trình xanh", "Công thức CPoint, nâng hạng thành viên và chính sách ưu đãi."),
   validateSearch: tabSearch,
   component: GreenJourneyPage,
 });

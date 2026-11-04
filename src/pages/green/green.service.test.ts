@@ -1,17 +1,17 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { approvalsStore } from "@/mocks/admin";
 import { DEFAULT_GREEN_CONFIG as C, greenConfigStore, type GreenConfig } from "@/mocks/green";
+import { loyaltyMembers } from "@/mocks/loyalty";
 import { applyApprovalDecision } from "@/pages/approvals/approvals.service";
 import {
-  carKgPerKm,
-  cpointOf,
   diffGreenConfig,
-  metroKgPerKm,
-  motorbikeKgPerKm,
+  cpointForCheckins,
+  maskEmail,
+  pointsPerCheckin,
   previewFare,
-  savedKg,
   submitGreenConfig,
   tierOf,
+  topMembers,
   validateGreenConfig,
 } from "@/pages/green/green.service";
 
@@ -23,72 +23,75 @@ afterEach(() => {
 
 const tier = (id: string) => C.tiers.find((t) => t.id === id)!;
 
-describe("công thức giống app mobile", () => {
-  it("hệ số mỗi km khớp số app đang hiển thị", () => {
-    expect(carKgPerKm(C.factors)).toBeCloseTo(0.101, 3);
-    expect(motorbikeKgPerKm(C.factors)).toBeCloseTo(0.062, 3);
-    expect(metroKgPerKm(C.factors)).toBeCloseTo(0.034, 3);
+describe("tích điểm theo lần check-in", () => {
+  it("mỗi loại vé có mức điểm riêng: ngày 10, 3 ngày 30, tháng 100", () => {
+    expect(pointsPerCheckin("TT2", C)).toBe(10);
+    expect(pointsPerCheckin("TT3", C)).toBe(30);
+    expect(pointsPerCheckin("TT4", C)).toBe(100);
   });
 
-  it("10 km bớt khoảng 0,28 kg CO₂, được 28 CPoint", () => {
-    expect(savedKg(10, C.factors)).toBeCloseTo(0.283, 3);
-    expect(cpointOf(savedKg(10, C.factors), C)).toBe(28);
+  it("CPoint nhân theo số lần check-in, không check-in thì không có điểm", () => {
+    expect(cpointForCheckins("TT2", 6, C)).toBe(60);
+    expect(cpointForCheckins("TT4", 2, C)).toBe(200);
+    expect(cpointForCheckins("TT4", 0, C)).toBe(0);
   });
 
-  it("thành viên demo của mobile: 635 CPoint (6,35 kg) ở cấp Cây xanh", () => {
-    expect(cpointOf(6.35, C)).toBe(635);
-    expect(tierOf(6.35, C.tiers)).toMatchObject({ tier: { id: "TREE" }, next: { id: "FOREST" } });
+  it("loại vé mới chưa khai báo thì được 0 điểm", () => {
+    expect(pointsPerCheckin("TT99", C)).toBe(0);
   });
 
-  it("mốc CPoint vào cấp khớp thang của mobile: 0, 100, 500, 2000", () => {
-    expect(C.tiers.map((t) => cpointOf(t.fromKg, C))).toEqual([0, 100, 500, 2000]);
+  it("thành viên demo của mobile: 635 CPoint ở cấp Cây xanh", () => {
+    expect(tierOf(635, C.tiers)).toMatchObject({
+      tier: { id: "TREE" },
+      next: { id: "FOREST" },
+      cpointToNext: 1365,
+    });
   });
 
   it("đúng mốc thì lên cấp, cấp cao nhất không còn cấp kế tiếp", () => {
-    expect(tierOf(0.99, C.tiers).tier.id).toBe("SEED");
-    expect(tierOf(1, C.tiers).tier.id).toBe("SPROUT");
-    expect(tierOf(50, C.tiers)).toMatchObject({ next: null, kgToNext: 0, progress: 1 });
+    expect(tierOf(99, C.tiers).tier.id).toBe("SEED");
+    expect(tierOf(100, C.tiers).tier.id).toBe("SPROUT");
+    expect(tierOf(5000, C.tiers)).toMatchObject({ next: null, cpointToNext: 0 });
+  });
+});
+
+describe("top thành viên", () => {
+  it("lấy tối đa 10 người, nhiều CPoint xếp trước, kèm cấp đúng", () => {
+    const top = topMembers(loyaltyMembers, C.tiers);
+    expect(top).toHaveLength(10);
+    expect(top[0]).toMatchObject({ rank: 1, cpoint: 2600, tier: { id: "FOREST" } });
+    const points = top.map((member) => member.cpoint);
+    expect(points).toEqual([...points].sort((a, b) => b - a));
+  });
+
+  it("che email", () => {
+    expect(maskEmail("user12@metro.vn")).toBe("us***@metro.vn");
   });
 });
 
 describe("previewFare", () => {
-  const base = { ticketTypeId: "TT1", base: 12000, tier: tier("TREE"), isStudent: false };
+  const base = { ticketTypeId: "TT2", base: 40000, tier: tier("TREE"), isStudent: false };
 
-  it("giảm theo cấp trên mọi loại vé", () => {
+  it("giảm theo cấp trên loại vé trong phạm vi", () => {
     const fare = previewFare({ ...base, ticketTypeId: "TT4", base: 300000 }, C.policy);
     expect(fare).toMatchObject({ blocked: false, total: 285000 });
   });
 
-  it("sinh viên giảm 20% trước, cấp tính trên phần còn lại (như mobile)", () => {
+  it("sinh viên giảm 20% trước, cấp tính trên phần còn lại", () => {
     const fare = previewFare({ ...base, isStudent: true }, C.policy);
-    expect(fare).toMatchObject({
-      total: 9120,
-      lines: [{ amount: 2400 }, { amount: 480 }],
-    });
+    expect(fare).toMatchObject({ total: 30400, lines: [{ amount: 8000 }, { amount: 1600 }] });
   });
 
-  it("ưu đãi sinh viên chỉ áp dụng trên vé lượt", () => {
+  it("vé tháng HSSV không giảm thêm chính sách sinh viên", () => {
     const fare = previewFare(
-      { ...base, ticketTypeId: "TT2", base: 40000, isStudent: true },
+      { ...base, ticketTypeId: "TT5", base: 150000, isStudent: true },
       C.policy,
     );
-    expect(fare).toMatchObject({ total: 38000, lines: [{ label: "Cấp Cây xanh" }] });
+    expect(fare).toMatchObject({ total: 142500, lines: [{ label: "Cấp Cây xanh" }] });
   });
 
   it("vé tháng HSSV chặn người chưa xác nhận sinh viên", () => {
     expect(previewFare({ ...base, ticketTypeId: "TT5" }, C.policy).blocked).toBe(true);
-  });
-
-  it("chế độ chỉ lấy mức cao nhất", () => {
-    const policy = { ...C.policy, combineMode: "BEST_ONLY" as const };
-    const fare = previewFare({ ...base, isStudent: true }, policy);
-    expect(fare).toMatchObject({ total: 9600, lines: [{ label: "Ưu đãi sinh viên" }] });
-  });
-
-  it("không vượt tổng mức giảm tối đa", () => {
-    const policy = { ...C.policy, maxTotalPercent: 21 };
-    const fare = previewFare({ ...base, isStudent: true }, policy);
-    expect(fare).toMatchObject({ total: 9480, capped: true });
   });
 });
 
@@ -101,39 +104,43 @@ describe("kiểm tra và phê duyệt cấu hình", () => {
     expect(validateGreenConfig(C)).toEqual([]);
   });
 
-  it("bắt lỗi mốc không tăng dần, mức giảm tụt và xe máy không phát thải hơn Metro", () => {
-    expect(validateGreenConfig(withTiers((_, i) => (i === 2 ? { fromKg: 1 } : {})))).toContain(
-      "Mốc CO₂ phải tăng dần theo cấp.",
+  it("điểm check-in phải là số nguyên không âm", () => {
+    const bad = edit({ checkinPoints: { TT2: -1 } });
+    expect(validateGreenConfig(bad)[0]).toMatch(/số nguyên/);
+    expect(validateGreenConfig(edit({ checkinPoints: { TT2: 1.5 } }))[0]).toMatch(/số nguyên/);
+  });
+
+  it("bắt lỗi mốc không tăng dần và mức giảm tụt", () => {
+    expect(validateGreenConfig(withTiers((_, i) => (i === 2 ? { fromCpoint: 50 } : {})))).toContain(
+      "Mốc CPoint phải tăng dần theo cấp.",
     );
     expect(
       validateGreenConfig(withTiers((_, i) => (i === 3 ? { discountPercent: 1 } : {})))[0],
     ).toMatch(/không được có mức giảm thấp hơn/);
-    expect(
-      validateGreenConfig(edit({ factors: { ...C.factors, motorbikeLitrePer100Km: 1 } }))[0],
-    ).toMatch(/cao hơn Metro/);
   });
 
   it("chỉ liệt kê các dòng thay đổi", () => {
-    const changes = diffGreenConfig(C, edit({ cpointPerKg: 120 }));
-    expect(changes).toEqual([{ field: "CPoint mỗi kg CO₂", old: "100", new: "120" }]);
+    const changes = diffGreenConfig(C, edit({ checkinPoints: { ...C.checkinPoints, TT2: 15 } }));
+    expect(changes).toEqual([{ field: "Điểm mỗi check-in: Vé ngày", old: "10", new: "15" }]);
   });
 
   it("chưa có hiệu lực khi chưa duyệt, chặn gửi trùng, duyệt xong mới áp dụng", () => {
-    const next = edit({ cpointPerKg: 120 });
+    const next = edit({ checkinPoints: { ...C.checkinPoints, TT2: 15 } });
     expect(submitGreenConfig(next)).toBeNull();
-    expect(greenConfigStore.get().cpointPerKg).toBe(100);
-    expect(submitGreenConfig(edit({ cpointPerKg: 150 }))).toMatch(/chờ Manager duyệt/);
-
+    expect(greenConfigStore.get().checkinPoints.TT2).toBe(10);
+    expect(submitGreenConfig(edit({ checkinPoints: { ...C.checkinPoints, TT2: 20 } }))).toMatch(
+      /chờ Manager duyệt/,
+    );
     const approval = approvalsStore.get().find((a) => a.type === "GREEN_POLICY")!;
     applyApprovalDecision(approval, "APPROVED");
-    expect(greenConfigStore.get().cpointPerKg).toBe(120);
+    expect(greenConfigStore.get().checkinPoints.TT2).toBe(15);
   });
 
   it("từ chối thì cấu hình giữ nguyên", () => {
-    submitGreenConfig(edit({ cpointPerKg: 120 }));
+    submitGreenConfig(edit({ checkinPoints: { ...C.checkinPoints, TT2: 15 } }));
     const approval = approvalsStore.get().find((a) => a.type === "GREEN_POLICY")!;
     applyApprovalDecision(approval, "REJECTED", "Chưa hợp lý");
-    expect(greenConfigStore.get().cpointPerKg).toBe(100);
+    expect(greenConfigStore.get().checkinPoints.TT2).toBe(10);
   });
 
   it("không gửi khi chưa có thay đổi", () => {

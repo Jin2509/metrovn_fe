@@ -270,4 +270,4 @@ export function ReasonDialog({
   );
 }
 
-export const money = (n: number) => new Intl.NumberFormat("vi-VN").format(n) + " ₫";
+export const money = (n: number) => new Intl.NumberFormat("vi-VN").format(n) + " VND";

@@ -36,8 +36,8 @@ export function LineStationEditor({ l }: { l: ReturnType<typeof useLines> }) {
       {l.line.status === "ACTIVE" && (
         <Alert className="mb-3">
           <AlertDescription>
-            Tuyến đang khai thác: thay đổi khoảng cách ảnh hưởng giá vé lượt và tra cứu lộ trình cho
-            vé đặt sau khi được Manager phê duyệt.
+            Tuyến đang khai thác: thay đổi khoảng cách ảnh hưởng tra cứu lộ trình sau khi được
+            Manager phê duyệt.
           </AlertDescription>
         </Alert>
       )}

@@ -65,7 +65,11 @@ export const DEFAULT_STUDENT_RULES: StudentRules = {
   ],
 };
 
-export const studentRulesStore = createStore<StudentRules>(DEFAULT_STUDENT_RULES);
+export type StudentSchool = { id: string; name: string };
+
+export const studentSchoolsStore = createStore<StudentSchool[]>(
+  DEFAULT_STUDENT_RULES.schools.map((name, index) => ({ id: `SCH${index + 1}`, name })),
+);
 
 const hoursAgo = (hours: number) => new Date(Date.now() - hours * 3_600_000).toISOString();
 const yearFromNow = (years: number) =>

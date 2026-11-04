@@ -39,23 +39,31 @@ export const usersStore = createStore<User[]>(
 );
 
 export type ApprovalType =
-  | "TICKET_PRICE"
+  | "TICKET_TYPE"
+  | "PARKING_LOT"
   | "PARKING_PRICE"
-  | "PROMOTION"
   | "GREEN_POLICY"
   | "OPERATION"
+  | "TRAIN"
   | "ACCOUNT"
+  | "ASSIGNMENT"
   | "STATION"
-  | "LINE";
+  | "LINE"
+  | "SCHOOL"
+  | "SYSTEM_PARAM";
 export const approvalLabel: Record<ApprovalType, string> = {
-  TICKET_PRICE: "Giá vé",
+  TICKET_TYPE: "Loại vé",
+  PARKING_LOT: "Bãi xe",
   PARKING_PRICE: "Giá gửi xe",
-  PROMOTION: "Ưu đãi",
   GREEN_POLICY: "Hành trình xanh",
   OPERATION: "Cấu hình vận hành",
+  TRAIN: "Đoàn tàu",
   ACCOUNT: "Tài khoản & nhân viên",
+  ASSIGNMENT: "Phân công ga",
   STATION: "Nhà ga",
   LINE: "Tuyến đường",
+  SCHOOL: "Danh sách trường",
+  SYSTEM_PARAM: "Tham số hệ thống",
 };
 export type Approval = {
   id: string;
@@ -73,40 +81,19 @@ export type Approval = {
    */
   payload?: unknown;
 };
+// Mới nhất đứng đầu, giống thứ tự khi `submitApproval` thêm yêu cầu.
 export const approvalsStore = createStore<Approval[]>([
   {
-    id: "A1",
-    type: "TICKET_PRICE",
-    title: "Tăng giá vé lượt chặng 6–10 km",
+    id: "A5",
+    type: "ACCOUNT",
+    title: "Tạo tài khoản kế toán: Lê Hoàng Yến",
     by: "Nguyễn Văn An",
-    at: "2026-10-12 09:20",
+    at: "2026-10-14 10:10",
     status: "PENDING",
     changes: [
-      { field: "Giá vé (6–10 km)", old: "12.000 ₫", new: "13.000 ₫" },
-      { field: "Hiệu lực từ", old: "—", new: "01/11/2026" },
+      { field: "Vai trò", old: "—", new: "ACCOUNTANT" },
+      { field: "Email", old: "—", new: "yen.le@metro.vn" },
     ],
-  },
-  {
-    id: "A2",
-    type: "PROMOTION",
-    title: "Khuyến mãi Sinh viên tháng 11",
-    by: "Nguyễn Văn An",
-    at: "2026-10-13 14:05",
-    status: "PENDING",
-    changes: [
-      { field: "Giảm", old: "—", new: "20%" },
-      { field: "Thời gian", old: "—", new: "01/11 – 30/11/2026" },
-    ],
-  },
-  {
-    id: "A3",
-    type: "PARKING_PRICE",
-    title: "Giá gửi ô tô theo giờ tại Suối Tiên",
-    by: "Nguyễn Văn An",
-    at: "2026-10-10 08:00",
-    status: "APPROVED",
-    decidedBy: "Trần Thị Bình",
-    changes: [{ field: "Ô tô / giờ", old: "20.000 ₫", new: "25.000 ₫" }],
   },
   {
     id: "A4",
@@ -120,26 +107,65 @@ export const approvalsStore = createStore<Approval[]>([
     changes: [{ field: "Giờ đóng cửa T7/CN", old: "22:00", new: "23:30" }],
   },
   {
-    id: "A5",
-    type: "ACCOUNT",
-    title: "Tạo tài khoản kế toán: Lê Hoàng Yến",
+    id: "A3",
+    type: "PARKING_PRICE",
+    title: "Giá gửi ô tô theo giờ tại Suối Tiên",
     by: "Nguyễn Văn An",
-    at: "2026-10-14 10:10",
+    at: "2026-10-10 08:00",
+    status: "APPROVED",
+    decidedBy: "Trần Thị Bình",
+    changes: [{ field: "Ô tô / giờ", old: "20.000 VND", new: "25.000 VND" }],
+  },
+  {
+    id: "A2",
+    type: "TICKET_TYPE",
+    title: "Thêm loại vé: Vé tuần",
+    by: "Nguyễn Văn An",
+    at: "2026-10-13 14:05",
     status: "PENDING",
     changes: [
-      { field: "Vai trò", old: "—", new: "ACCOUNTANT" },
-      { field: "Email", old: "—", new: "yen.le@metro.vn" },
+      { field: "Mã loại vé", old: "—", new: "WEEK" },
+      { field: "Tên loại vé", old: "—", new: "Vé tuần" },
+      { field: "Giá vé", old: "—", new: "150.000 VND" },
     ],
+    payload: {
+      catalog: "ticketType",
+      action: "CREATE",
+      draft: {
+        code: "WEEK",
+        name: "Vé tuần",
+        validityHours: 168,
+        price: 150000,
+        status: "ACTIVE",
+      },
+    },
+  },
+  {
+    id: "A1",
+    type: "PARKING_PRICE",
+    title: "Sửa giá gửi xe: Xe máy / Lượt",
+    by: "Nguyễn Văn An",
+    at: "2026-10-12 09:20",
+    status: "PENDING",
+    changes: [{ field: "Giá", old: "5.000 VND", new: "6.000 VND" }],
+    payload: {
+      catalog: "parkingPrice",
+      action: "UPDATE",
+      id: "PP2",
+      draft: { vehicle: "Xe máy", unit: "Lượt", price: 6000 },
+    },
   },
 ]);
 /** Tạo yêu cầu phê duyệt cho Manager; trả về mã yêu cầu để màn hình gửi duyệt theo dõi kết quả. */
+let approvalSeq = 0;
 export function submitApproval(
   type: ApprovalType,
   title: string,
   changes: Approval["changes"],
   payload?: unknown,
 ): string {
-  const id = `A${Date.now()}`;
+  // Thêm số đếm vì hai yêu cầu có thể tạo trong cùng một mili giây.
+  const id = `A${Date.now()}-${++approvalSeq}`;
   approvalsStore.set((a) => [
     {
       id,
@@ -196,42 +222,111 @@ export function logAction(action: string, target: string) {
   ]);
 }
 
-export const ticketTypesStore = createStore([
-  { id: "TT1", name: "Vé lượt", validity: "Trong ngày", price: 0, status: "ACTIVE" },
-  { id: "TT2", name: "Vé ngày", validity: "24 giờ", price: 40000, status: "ACTIVE" },
-  { id: "TT3", name: "Vé 3 ngày", validity: "72 giờ", price: 90000, status: "ACTIVE" },
-  { id: "TT4", name: "Vé tháng", validity: "30 ngày", price: 300000, status: "ACTIVE" },
-  { id: "TT5", name: "Vé tháng HSSV", validity: "30 ngày", price: 150000, status: "ACTIVE" },
+export type TicketTypeRow = {
+  id: string;
+  code: string;
+  name: string;
+  validityHours: number;
+  price: number;
+  status: "ACTIVE" | "INACTIVE";
+};
+export const ticketTypesStore = createStore<TicketTypeRow[]>([
+  {
+    id: "TT2",
+    code: "DAY",
+    name: "Vé ngày",
+    validityHours: 24,
+    price: 40000,
+    status: "ACTIVE",
+  },
+  {
+    id: "TT3",
+    code: "THREE_DAY",
+    name: "Vé 3 ngày",
+    validityHours: 72,
+    price: 90000,
+    status: "ACTIVE",
+  },
+  {
+    id: "TT4",
+    code: "MONTH",
+    name: "Vé tháng",
+    validityHours: 720,
+    price: 300000,
+    status: "ACTIVE",
+  },
+  {
+    id: "TT5",
+    code: "MONTH_STUDENT",
+    name: "Vé tháng HSSV",
+    validityHours: 720,
+    price: 150000,
+    status: "ACTIVE",
+  },
 ]);
-export const distancePricesStore = createStore([
-  { id: "P1", from: 0, to: 5, price: 7000, effective: "01/01/2026" },
-  { id: "P2", from: 5, to: 10, price: 12000, effective: "01/01/2026" },
-  { id: "P3", from: 10, to: 15, price: 16000, effective: "01/01/2026" },
-  { id: "P4", from: 15, to: 20, price: 20000, effective: "01/01/2026" },
-]);
-
-export const parkingLots = [
+/** Thời hạn dễ đọc từ số giờ: quá 3 ngày và tròn ngày thì đổi ra ngày. */
+export function formatValidity(ticket: Pick<TicketTypeRow, "validityHours">) {
+  const hours = ticket.validityHours;
+  return hours > 72 && hours % 24 === 0 ? `${hours / 24} ngày` : `${hours} giờ`;
+}
+export type ParkingLotRow = {
+  id: string;
+  code: string;
+  name: string;
+  stationId: string;
+  bike: number;
+  moto: number;
+  car: number;
+  status: "ACTIVE" | "INACTIVE" | "MAINTENANCE";
+  /** Tỉ lệ lấp đầy, hệ thống tự tính từ lượt gửi xe. */
+  used: number;
+};
+export const parkingLotsStore = createStore<ParkingLotRow[]>([
   {
     id: "PK1",
+    code: "PK-ST",
     name: "Bãi Suối Tiên",
     stationId: "S1-14",
     moto: 1200,
     car: 150,
     bike: 200,
+    status: "ACTIVE",
     used: 0.72,
   },
-  { id: "PK2", name: "Bãi Thủ Đức", stationId: "S1-11", moto: 800, car: 60, bike: 120, used: 0.88 },
+  {
+    id: "PK2",
+    code: "PK-TD",
+    name: "Bãi Thủ Đức",
+    stationId: "S1-11",
+    moto: 800,
+    car: 60,
+    bike: 120,
+    status: "ACTIVE",
+    used: 0.88,
+  },
   {
     id: "PK3",
+    code: "PK-RC",
     name: "Bãi Rạch Chiếc",
     stationId: "S1-8",
     moto: 600,
     car: 80,
     bike: 80,
+    status: "ACTIVE",
     used: 0.41,
   },
-  { id: "PK4", name: "Bãi An Phú", stationId: "S1-7", moto: 500, car: 40, bike: 60, used: 0.65 },
-];
+  {
+    id: "PK4",
+    code: "PK-AP",
+    name: "Bãi An Phú",
+    stationId: "S1-7",
+    moto: 500,
+    car: 40,
+    bike: 60,
+    status: "ACTIVE",
+    used: 0.65,
+  },
+]);
 export const parkingPricesStore = createStore([
   { id: "PP1", vehicle: "Xe đạp", unit: "Lượt", price: 2000 },
   { id: "PP2", vehicle: "Xe máy", unit: "Lượt", price: 5000 },
@@ -240,40 +335,6 @@ export const parkingPricesStore = createStore([
   { id: "PP5", vehicle: "Ô tô", unit: "Ngày", price: 120000 },
 ]);
 
-export type Promo = {
-  id: string;
-  name: string;
-  discount: number;
-  start: string;
-  end: string;
-  status: "DRAFT" | "ACTIVE" | "INACTIVE" | "EXPIRED";
-};
-export const promosStore = createStore<Promo[]>([
-  {
-    id: "KM1",
-    name: "Chào mừng khai trương",
-    discount: 50,
-    start: "2026-01-01",
-    end: "2026-01-31",
-    status: "EXPIRED",
-  },
-  {
-    id: "KM2",
-    name: "Thứ Tư xanh",
-    discount: 15,
-    start: "2026-09-01",
-    end: "2026-12-31",
-    status: "ACTIVE",
-  },
-  {
-    id: "KM3",
-    name: "Gia đình cuối tuần",
-    discount: 10,
-    start: "2026-10-01",
-    end: "2026-11-30",
-    status: "INACTIVE",
-  },
-]);
 export type Txn = {
   id: string;
   at: string;
@@ -301,7 +362,7 @@ export const txnStore = createStore<Txn[]>(
         "PENDING",
       ] as const
     )[i % 8];
-    const amount = [7000, 12000, 16000, 40000, 300000, 5000, 20000][i % 7];
+    const amount = [40000, 90000, 300000, 150000, 40000, 5000, 20000][i % 7];
     return {
       id: `GD${50000 + i}`,
       at: `2026-10-${String(14 - (i % 14)).padStart(2, "0")} ${String(6 + (i % 15)).padStart(2, "0")}:${String((i * 13) % 60).padStart(2, "0")}`,

@@ -11,11 +11,13 @@ export function ReviewSheet({
   onClose,
   onApprove,
   onReject,
+  onRevoke,
 }: {
   item: StudentVerification | null;
   onClose: () => void;
   onApprove: () => void;
   onReject: () => void;
+  onRevoke: () => void;
 }) {
   return (
     <Sheet open={!!item} onOpenChange={(open) => !open && onClose()}>
@@ -92,6 +94,19 @@ export function ReviewSheet({
                   {item.decidedAt && ` lúc ${formatDateTime(item.decidedAt)}`}
                   {item.expiresAt && `. Hiệu lực đến ${formatDate(item.expiresAt)}`}.
                 </p>
+              )}
+              {item.status === "VERIFIED" && (
+                <Can action="student.review">
+                  <div className="space-y-2 rounded-lg border p-3">
+                    <p className="text-xs text-muted-foreground">
+                      Phát hiện thẻ giả, mượn thẻ hoặc đã thôi học thì thu hồi để dừng giá sinh
+                      viên.
+                    </p>
+                    <Button variant="outline" onClick={onRevoke}>
+                      Thu hồi xác nhận
+                    </Button>
+                  </div>
+                </Can>
               )}
             </div>
           </>

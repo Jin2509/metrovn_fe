@@ -1,4 +1,4 @@
-import { parkingLots } from "./admin";
+import { parkingLotsStore } from "./admin";
 import { stations } from "./metro";
 
 // Bảng sự kiện (fact table) đã tổng hợp theo NGÀY × GA — đúng dạng backend nên trả về cho bài toán
@@ -11,6 +11,7 @@ export type StationDailyStat = {
   ticketRevenue: number;
   parkingRevenue: number;
   refund: number;
+  transactions: number; // số giao dịch thanh toán thành công
 };
 
 export const STATION_STATS_RANGE = { from: "2026-09-15", to: "2026-10-14" } as const;
@@ -30,7 +31,9 @@ function dateRange(from: string, to: string): string[] {
   return out;
 }
 
-const parkingCapacity = new Map(parkingLots.map((lot) => [lot.stationId, lot.moto + lot.car]));
+const parkingCapacity = new Map(
+  parkingLotsStore.get().map((lot) => [lot.stationId, lot.moto + lot.car]),
+);
 
 export const stationDailyStats: StationDailyStat[] = dateRange(
   STATION_STATS_RANGE.from,
@@ -47,7 +50,8 @@ export const stationDailyStats: StationDailyStat[] = dateRange(
       // Giá vé bình quân tăng dần theo khoảng cách tới trung tâm (Bến Thành).
       const avgFare = 7000 + station.order * 600;
       const capacity = parkingCapacity.get(station.id) ?? 0;
-      const parkingRevenue = Math.round(capacity * (0.5 + noise(seed + 2) * 0.4)) * 5000;
+      const parkingTurns = Math.round(capacity * (0.5 + noise(seed + 2) * 0.4));
+      const parkingRevenue = parkingTurns * 5000;
       const ticketRevenue = entries * avgFare;
       return {
         date,
@@ -57,6 +61,8 @@ export const stationDailyStats: StationDailyStat[] = dateRange(
         ticketRevenue,
         parkingRevenue,
         refund: Math.round(ticketRevenue * noise(seed + 3) * 0.01),
+        // Một đơn có thể gồm nhiều vé nên số giao dịch vé ít hơn lượt vào.
+        transactions: Math.round(entries * 0.6) + parkingTurns,
       };
     });
 });

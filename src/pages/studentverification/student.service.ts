@@ -1,10 +1,11 @@
 import { getActorName } from "@/lib/auth/session.store";
 import { createStore } from "@/lib/store";
 import { logAction } from "@/mocks/admin";
+import { getParam } from "@/mocks/system-params";
 import {
   DEFAULT_STUDENT_RULES,
   SEED_SUBMISSIONS,
-  studentRulesStore,
+  studentSchoolsStore,
   type StudentCardData,
   type StudentRules,
   type StudentStatus,
@@ -15,8 +16,19 @@ import {
 // Quy tắc tự động: phần lớn hồ sơ do hệ thống tự quyết, người chỉ xem hồ sơ máy không chắc.
 // Khi có backend, hàm này chạy ở backend ngay sau khi AI đọc xong thẻ.
 
-/** Thời hạn xử lý hồ sơ cần xem xét, khớp câu "có thể mất đến 24 giờ" trên app. */
-export const REVIEW_SLA_HOURS = 24;
+/** Thời hạn xử lý hồ sơ cần xem xét. Mặc định khớp câu "có thể mất đến 24 giờ" trên app. */
+export const reviewSlaHours = () => getParam("student.reviewSlaHours");
+
+/** Quy tắc đang áp dụng: ngưỡng lấy từ tham số hệ thống, trường lấy từ danh sách đã duyệt. */
+export function currentStudentRules(): StudentRules {
+  return {
+    autoApproveConfidence: getParam("student.autoApprovePercent") / 100,
+    minReadableConfidence: getParam("student.minReadablePercent") / 100,
+    validityMonths: getParam("student.validityMonths"),
+    renewWithinDays: getParam("student.renewWithinDays"),
+    schools: studentSchoolsStore.get().map((school) => school.name),
+  };
+}
 
 const normalizeName = (name: string) =>
   name
@@ -134,7 +146,7 @@ export function isOverdue(
 ) {
   return (
     item.status === "NEEDS_REVIEW" &&
-    now.getTime() - new Date(item.submittedAt).getTime() > REVIEW_SLA_HOURS * 3_600_000
+    now.getTime() - new Date(item.submittedAt).getTime() > reviewSlaHours() * 3_600_000
   );
 }
 
@@ -162,32 +174,21 @@ function decide(id: string, patch: Partial<StudentVerification>) {
 export function approveStudent(item: StudentVerification, now = new Date()) {
   decide(item.id, {
     status: "VERIFIED",
-    expiresAt: expiryOf(item.card, studentRulesStore.get(), now),
+    expiresAt: expiryOf(item.card, currentStudentRules(), now),
   });
   logAction("Duyệt xác nhận sinh viên", item.id);
 }
 
 export function rejectStudent(item: StudentVerification, reason: string) {
-  decide(item.id, { status: "REJECTED", reasons: [reason] });
+  decide(item.id, { status: "REJECTED", reasons: [reason], expiresAt: null });
   logAction("Từ chối xác nhận sinh viên", item.id);
 }
 
-export function validateStudentRules(rules: StudentRules): string | null {
-  const isRatio = (value: number) => value > 0 && value <= 1;
-  if (!isRatio(rules.autoApproveConfidence) || !isRatio(rules.minReadableConfidence))
-    return "Độ tin cậy phải từ 1 đến 100%.";
-  if (rules.minReadableConfidence >= rules.autoApproveConfidence)
-    return "Ngưỡng tự duyệt phải cao hơn ngưỡng đọc được.";
-  if (!(rules.validityMonths >= 1)) return "Thời hạn xác nhận phải từ 1 tháng.";
-  if (!(rules.renewWithinDays >= 1)) return "Số ngày nhắc gia hạn phải từ 1 ngày.";
-  if (!rules.schools.length) return "Danh sách trường không được trống.";
-  return null;
-}
-
-export function saveStudentRules(rules: StudentRules): string | null {
-  const error = validateStudentRules(rules);
-  if (error) return error;
-  studentRulesStore.set(() => rules);
-  logAction("Cập nhật quy tắc xác nhận sinh viên", "Áp dụng cho hồ sơ gửi sau");
-  return null;
+/**
+ * AI chỉ đọc thẻ, không chứng minh được thẻ là thật. Phát hiện gian lận sau khi đã duyệt thì Manager
+ * thu hồi: hành khách mất giá sinh viên ngay và thấy lý do trên app.
+ */
+export function revokeStudent(item: StudentVerification, reason: string) {
+  decide(item.id, { status: "REJECTED", reasons: [reason], expiresAt: null });
+  logAction("Thu hồi xác nhận sinh viên", item.id);
 }

@@ -4,7 +4,7 @@ import { ResetPasswordPage } from "@/pages/forgotpassword";
 import { validateEmail } from "@/pages/login/login.service";
 
 export const Route = createFileRoute("/reset-password")({
-  head: seo("Đặt lại mật khẩu", "Đặt lại mật khẩu tài khoản Metro TP.HCM bằng mã xác thực."),
+  head: seo("Đặt lại mật khẩu", "Đặt lại mật khẩu tài khoản HopOn bằng mã xác thực."),
   validateSearch: (search: Record<string, unknown>): { email?: string } => ({
     email: typeof search.email === "string" ? search.email : undefined,
   }),

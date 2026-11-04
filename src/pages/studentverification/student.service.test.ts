@@ -9,9 +9,10 @@ import {
   expiryOf,
   isOverdue,
   processSubmissions,
+  revokeStudent,
+  studentVerificationsStore,
   studentStats,
   toPassengerStatus,
-  validateStudentRules,
 } from "@/pages/studentverification/student.service";
 
 const now = new Date("2026-11-04T08:00:00Z");
@@ -123,9 +124,21 @@ describe("thời hạn và trạng thái", () => {
     expect(isOverdue({ ...item, submittedAt: "2026-11-03T08:01:00Z" }, now)).toBe(false);
     expect(isOverdue({ ...item, status: "VERIFIED" }, now)).toBe(false);
   });
+});
 
-  it("ngưỡng tự duyệt phải cao hơn ngưỡng đọc được", () => {
-    expect(validateStudentRules(R)).toBeNull();
-    expect(validateStudentRules({ ...R, autoApproveConfidence: 0.4 })).toMatch(/cao hơn/);
+describe("thu hồi xác nhận", () => {
+  it("hồ sơ AI đã duyệt vẫn thu hồi được, hết ưu đãi và ghi người quyết định", () => {
+    const seed = studentVerificationsStore.get();
+    const verified = seed.find((i) => i.status === "VERIFIED")!;
+    revokeStudent(verified, "Thẻ không có thật");
+    const after = studentVerificationsStore.get().find((i) => i.id === verified.id)!;
+    expect(after).toMatchObject({
+      status: "REJECTED",
+      expiresAt: null,
+      reasons: ["Thẻ không có thật"],
+    });
+    expect(after.decidedBy).toBeTruthy();
+    expect(toPassengerStatus(after.status)).toBe("REJECTED");
+    studentVerificationsStore.set(() => seed);
   });
 });

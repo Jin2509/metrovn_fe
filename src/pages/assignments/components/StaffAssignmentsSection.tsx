@@ -1,3 +1,4 @@
+import { Badge } from "@/components/ui/badge";
 import { DataTable, Section, StatusBadge } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import type { User } from "@/mocks/admin";
@@ -6,10 +7,12 @@ import type { Station } from "@/mocks/metro";
 export function StaffAssignmentsSection({
   staff,
   stations,
+  pendingIds,
   onUnassign,
 }: {
   staff: User[];
   stations: Station[];
+  pendingIds: (string | undefined)[];
   onUnassign: (userId: string) => void;
 }) {
   return (
@@ -29,10 +32,16 @@ export function StaffAssignmentsSection({
           {
             h: "",
             c: (user) =>
-              user.stationId && (
-                <Button size="sm" variant="ghost" onClick={() => onUnassign(user.id)}>
-                  Gỡ
-                </Button>
+              pendingIds.includes(user.id) ? (
+                <Badge variant="outline" className="whitespace-nowrap font-normal">
+                  Chờ duyệt
+                </Badge>
+              ) : (
+                user.stationId && (
+                  <Button size="sm" variant="ghost" onClick={() => onUnassign(user.id)}>
+                    Gỡ
+                  </Button>
+                )
               ),
           },
         ]}

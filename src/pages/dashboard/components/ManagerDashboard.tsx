@@ -1,94 +1,148 @@
-import { Link } from "@tanstack/react-router";
-import { Bot, ChevronRight, Inbox, Smile, Wallet } from "lucide-react";
-import { Section, StatCard } from "@/components/shared";
-import { Badge } from "@/components/ui/badge";
+import { useState } from "react";
+import { toast } from "sonner";
+import { ReasonDialog, Section } from "@/components/shared";
 import { Button } from "@/components/ui/button";
-import { approvalLabel, approvalsStore } from "@/mocks/admin";
-import { messagesStore, sessionsStore } from "@/mocks/chatbot";
-import { percent } from "@/pages/chatbot/chatbot.service";
-import { computeStats, filterLog } from "@/pages/chatbot/chatbot.stats";
-import { QuickLinks, RevenueChart } from "@/pages/dashboard/components/DashboardWidgets";
+import { approvalLabel, approvalsStore, type Approval } from "@/mocks/admin";
+import { announcementsStore } from "@/mocks/announcements";
+import { incidentsStore } from "@/mocks/incidents";
+import { applyApprovalDecision } from "@/pages/approvals/approvals.service";
+import {
+  IncidentQuickList,
+  KpiStrip,
+  NetworkModel,
+  RevenueChart,
+  SeeAll,
+} from "@/pages/dashboard/components/DashboardWidgets";
+import { isOpen } from "@/pages/incidents/incidents.service";
+import { SEVERITY_LABELS } from "@/pages/notifications/notifications.constants";
+import { phaseOf, scopeLabel } from "@/pages/notifications/notifications.service";
+import {
+  studentStats,
+  studentVerificationsStore,
+} from "@/pages/studentverification/student.service";
 
-/** Manager: phê duyệt thay đổi, theo dõi doanh thu và chất lượng phục vụ (chatbot). */
+const SHOWN_REQUESTS = 5;
+const SHOWN_CHANGES = 3;
+
+function ApprovalQuickList({ pending }: { pending: Approval[] }) {
+  const [rejecting, setRejecting] = useState<Approval | null>(null);
+  const oldestFirst = [...pending].reverse().slice(0, SHOWN_REQUESTS);
+
+  const decide = (approval: Approval, reason?: string) => {
+    const error = applyApprovalDecision(approval, reason ? "REJECTED" : "APPROVED", reason);
+    if (error) return toast.error(error);
+    toast.success(reason ? "Đã từ chối" : "Đã phê duyệt");
+    setRejecting(null);
+  };
+
+  return (
+    <Section
+      title={`Chờ bạn duyệt (${pending.length})`}
+      description={pending.length ? "Yêu cầu cũ nhất xếp trên cùng" : undefined}
+      action={<SeeAll to="/approvals">Mở hộp phê duyệt</SeeAll>}
+    >
+      {oldestFirst.length ? (
+        <ul className="-my-3 divide-y">
+          {oldestFirst.map((approval) => (
+            <li key={approval.id} className="flex flex-wrap items-start gap-3 py-3">
+              <div className="min-w-0 flex-1 basis-64">
+                <p className="text-sm font-medium">{approval.title}</p>
+                <p className="text-xs text-muted-foreground">
+                  {approvalLabel[approval.type]} · {approval.by} · {approval.at}
+                </p>
+                <ul className="mt-1.5 space-y-0.5 text-xs">
+                  {approval.changes.slice(0, SHOWN_CHANGES).map((change) => (
+                    <li key={change.field}>
+                      <span className="text-muted-foreground">{change.field}: </span>
+                      {change.old !== "—" && (
+                        <>
+                          <span className="text-muted-foreground line-through">{change.old}</span>
+                          {" → "}
+                        </>
+                      )}
+                      <span className="font-medium">{change.new}</span>
+                    </li>
+                  ))}
+                  {approval.changes.length > SHOWN_CHANGES && (
+                    <li className="text-muted-foreground">
+                      Và {approval.changes.length - SHOWN_CHANGES} thay đổi khác, xem ở hộp phê
+                      duyệt
+                    </li>
+                  )}
+                </ul>
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" onClick={() => decide(approval)}>
+                  Duyệt
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setRejecting(approval)}>
+                  Từ chối
+                </Button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-sm text-muted-foreground">Không còn yêu cầu nào chờ duyệt.</p>
+      )}
+      <ReasonDialog
+        open={!!rejecting}
+        title={rejecting ? `Từ chối: ${rejecting.title}` : ""}
+        confirmLabel="Từ chối"
+        onClose={() => setRejecting(null)}
+        onConfirm={(reason) => rejecting && decide(rejecting, reason)}
+      />
+    </Section>
+  );
+}
+
+/** Manager: duyệt yêu cầu ngay tại đây là việc chính, sự cố và thông báo để theo dõi. */
 export function ManagerDashboard() {
   const pending = approvalsStore.use().filter((a) => a.status === "PENDING");
-  const log = filterLog(sessionsStore.use(), messagesStore.use(), { days: 7, channel: "ALL" });
-  const bot = computeStats(log.sessions, log.messages);
+  const incidents = incidentsStore.use().filter(isOpen);
+  const students = studentStats(studentVerificationsStore.use());
+  const notices = announcementsStore.use().filter((a) => phaseOf(a) === "ACTIVE");
 
   return (
     <>
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          label="Yêu cầu chờ duyệt"
-          value={pending.length}
-          hint="Giá, khuyến mãi, vận hành, tài khoản, chatbot"
-          icon={Inbox}
-          tone={pending.length ? "accent" : "muted"}
-        />
-        <StatCard
-          label="Doanh thu hôm nay"
-          value="512,4 triệu ₫"
-          hint="Tất cả dịch vụ"
-          icon={Wallet}
-        />
-        <StatCard
-          label="Chatbot nhận diện được câu hỏi"
-          value={percent(bot.recognitionRate)}
-          hint={`${bot.questions} câu hỏi trong 7 ngày`}
-          icon={Bot}
-          tone="success"
-        />
-        <StatCard
-          label="Hành khách hài lòng với chatbot"
-          value={bot.feedbackCount ? percent(bot.satisfaction) : "—"}
-          hint={`Trên ${bot.feedbackCount} lượt đánh giá · 7 ngày`}
-          icon={Smile}
-          tone="muted"
-        />
-      </div>
-
-      <div className="grid items-start gap-6 lg:grid-cols-[1.2fr_1fr]">
-        <Section
-          title="Hộp phê duyệt"
-          description={pending.length ? "Các yêu cầu cũ nhất được xếp trên cùng" : "Đã xử lý hết"}
-          action={
-            <Button asChild size="sm" variant="outline">
-              <Link to="/approvals">Mở hộp phê duyệt</Link>
-            </Button>
-          }
-        >
-          {pending.length ? (
-            <ul className="divide-y">
-              {[...pending]
-                .reverse()
-                .slice(0, 6)
-                .map((a) => (
-                  <li key={a.id}>
-                    <Link
-                      to="/approvals"
-                      className="group -mx-2 flex items-center gap-3 rounded-lg px-2 py-3 hover:bg-muted/60"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium">{a.title}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {a.by} · {a.at} · {a.changes.length} thay đổi
-                        </p>
-                      </div>
-                      <Badge variant="secondary" className="font-normal">
-                        {approvalLabel[a.type]}
-                      </Badge>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                    </Link>
+      <KpiStrip
+        items={[
+          { label: "Chờ duyệt", value: pending.length },
+          {
+            label: "Sự cố đang mở",
+            value: incidents.length,
+            hint: `${incidents.filter((i) => i.severity === "EMERGENCY").length} khẩn cấp`,
+          },
+          { label: "Hồ sơ sinh viên cần xem", value: students.needsReview },
+          { label: "Doanh thu hôm nay", value: "512,4 triệu VND" },
+        ]}
+      />
+      <div className="grid items-start gap-6 xl:grid-cols-[1.6fr_1fr]">
+        <div className="min-w-0 space-y-6">
+          <ApprovalQuickList pending={pending} />
+          <NetworkModel />
+        </div>
+        <div className="min-w-0 space-y-6">
+          <IncidentQuickList />
+          <Section title={`Thông báo đang hiệu lực (${notices.length})`}>
+            {notices.length ? (
+              <ul className="-my-2 divide-y">
+                {notices.map((a) => (
+                  <li key={a.id} className="py-2.5 text-sm">
+                    <p className="font-medium">{a.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {SEVERITY_LABELS[a.severity]} · {scopeLabel(a)}
+                    </p>
                   </li>
                 ))}
-            </ul>
-          ) : (
-            <p className="text-sm text-muted-foreground">Không có yêu cầu nào đang chờ duyệt.</p>
-          )}
-        </Section>
-        <RevenueChart />
+              </ul>
+            ) : (
+              <p className="text-sm text-muted-foreground">Không có thông báo nào.</p>
+            )}
+          </Section>
+          <RevenueChart />
+        </div>
       </div>
-      <QuickLinks />
     </>
   );
 }

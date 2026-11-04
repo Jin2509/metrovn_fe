@@ -25,7 +25,7 @@ export function Header({
         <div className="min-w-0 flex-1">
           {group && (
             <p className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
-              Metro Admin <ChevronRight className="h-3 w-3" /> {group.title}
+              HopOn <ChevronRight className="h-3 w-3" /> {group.title}
             </p>
           )}
           <h1 className="truncate text-xl font-semibold tracking-tight">{title}</h1>

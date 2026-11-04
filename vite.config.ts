@@ -21,7 +21,11 @@ export default defineConfig({
       server: { entry: "server" },
     }),
     // Build ra server Node.js độc lập tại .output/server/index.mjs
-    nitro({ preset: "node-server" }),
+    nitro({
+      preset: "node-server",
+      // Nén sẵn gzip/brotli lúc build: giảm dung lượng tải khoảng 3 lần, không tốn CPU lúc chạy.
+      compressPublicAssets: true,
+    }),
     viteReact(),
   ],
 });

@@ -3,9 +3,6 @@ import { seo } from "@/lib/seo";
 import { SettingsPage } from "@/pages/settings";
 
 export const Route = createFileRoute("/settings")({
-  head: seo(
-    "Vai trò & phân quyền",
-    "Quyền truy cập màn hình và thao tác của Admin, Manager, Kế toán.",
-  ),
+  head: seo("Vai trò & phân quyền", "Tạo vai trò và gán quyền cho từng vai trò."),
   component: SettingsPage,
 });

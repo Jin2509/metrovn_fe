@@ -47,11 +47,13 @@ describe("UC13-04 kiểm tra dữ liệu", () => {
 });
 
 describe("người nhận và gửi", () => {
-  it("đếm tài khoản đang hoạt động theo nhóm; Tất cả = hành khách + nhân viên + kế toán", () => {
+  it("đếm tài khoản đang hoạt động theo nhóm; Manager luôn nằm trong danh sách nhận", () => {
     const users = usersStore.get();
     const n = (r: string) => users.filter((u) => u.status === "ACTIVE" && u.role === r).length;
-    expect(recipientCount("PASSENGER")).toBe(n("PASSENGER"));
-    expect(recipientCount("ALL")).toBe(n("PASSENGER") + n("STAFF") + n("ACCOUNTANT"));
+    expect(recipientCount("PASSENGER")).toBe(n("PASSENGER") + n("MANAGER"));
+    expect(recipientCount("ALL")).toBe(
+      n("PASSENGER") + n("STAFF") + n("ACCOUNTANT") + n("MANAGER"),
+    );
   });
 
   it("gửi lưu kết quả theo số người nhận; gửi lại xóa lỗi", () => {

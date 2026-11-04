@@ -21,7 +21,7 @@ export function PeriodSummaryTable({
           { h: "Kỳ", c: (period) => <b>{period.month}</b> },
           { h: "Doanh thu", c: (period) => money(period.revenue) },
           { h: "Hoàn tiền", c: (period) => money(period.refund) },
-          { h: "Khuyến mãi", c: (period) => money(period.promo) },
+          { h: "Giảm giá", c: (period) => money(period.promo) },
           {
             h: "Thuần",
             c: (period) => <b>{money(period.revenue - period.refund - period.promo)}</b>,

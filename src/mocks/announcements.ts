@@ -43,11 +43,12 @@ export const fmtDateTime = (d: Date) =>
 // Mốc thời gian tính theo lúc mở trang để bản demo luôn có thông báo đang hiệu lực / sắp tới / đã kết thúc.
 const now = Date.now();
 
+// Manager theo dõi vận hành nên luôn nhận bản sao, dù nhóm nhận là ai.
 const ROLES: Record<AnnouncementAudience, User["role"][]> = {
-  PASSENGER: ["PASSENGER"],
-  STAFF: ["STAFF"],
-  ACCOUNTANT: ["ACCOUNTANT"],
-  ALL: ["PASSENGER", "STAFF", "ACCOUNTANT"],
+  PASSENGER: ["PASSENGER", "MANAGER"],
+  STAFF: ["STAFF", "MANAGER"],
+  ACCOUNTANT: ["ACCOUNTANT", "MANAGER"],
+  ALL: ["PASSENGER", "STAFF", "ACCOUNTANT", "MANAGER"],
 };
 /** Kết quả gửi mẫu: số người nhận đếm từ tài khoản đang hoạt động, giống lúc gửi thật. */
 function delivery(audience: AnnouncementAudience, failed: number, readRatio: number): Delivery {

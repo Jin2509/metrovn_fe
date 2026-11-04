@@ -1,10 +1,10 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Building2, Bus, Map as MapIcon, Megaphone, TrainFront, Wrench } from "lucide-react";
-import { AppShell, PageTabs } from "@/components/app-shell";
+import { Building2, Megaphone, TrainFront, Wrench } from "lucide-react";
+import { AppShell } from "@/components/app-shell";
 import { LazyMap } from "@/components/lazy-map";
 import { Section, StatCard } from "@/components/shared";
 import { Card, CardContent } from "@/components/ui/card";
-import { BusesPanel } from "@/pages/buses";
+import { BusRouteList } from "@/pages/map/components/BusRouteList";
 import { MapControls } from "@/pages/map/components/MapControls";
 import { SelectedStationCard } from "@/pages/map/components/SelectedStationCard";
 import { useMap } from "@/pages/map/hooks/useMap";
@@ -59,6 +59,7 @@ function SystemMapPanel() {
               height={640}
               visibleLines={m.visibleLines}
               showBus={m.showBus}
+              highlightRoute={m.busRoute}
               focusStationId={m.selectedStationId}
               onSelectStation={m.selectStation}
               stationStates={m.stationStates}
@@ -109,6 +110,7 @@ function SystemMapPanel() {
             showTrains={m.showTrains}
             onShowTrainsChange={m.setShowTrains}
           />
+          {m.showBus && <BusRouteList selectedRoute={m.busRoute} onSelectRoute={m.setBusRoute} />}
         </div>
       </div>
     </>
@@ -118,17 +120,7 @@ function SystemMapPanel() {
 export function MapPage() {
   return (
     <AppShell title="Bản đồ hệ thống">
-      <PageTabs
-        tabs={[
-          {
-            value: "network",
-            label: "Bản đồ hệ thống",
-            icon: MapIcon,
-            content: <SystemMapPanel />,
-          },
-          { value: "buses", label: "Xe buýt kết nối", icon: Bus, content: <BusesPanel /> },
-        ]}
-      />
+      <SystemMapPanel />
     </AppShell>
   );
 }

@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { toast } from "sonner";
-import { usersStore } from "@/mocks/admin";
+import { assignmentCatalog } from "@/lib/catalogs";
+import { pendingRequests, type CatalogPayload } from "@/lib/change-requests";
+import { approvalsStore, usersStore } from "@/mocks/admin";
 import { stations } from "@/mocks/metro";
 import {
   assignStaffToStation,
@@ -14,17 +16,21 @@ export function useAssignments() {
   const [userId, setUserId] = useState("");
   const [stationId, setStationId] = useState("");
   const [error, setError] = useState("");
+  const pendingIds = pendingRequests(assignmentCatalog.key, approvalsStore.use()).map(
+    (approval) => (approval.payload as CatalogPayload).id,
+  );
 
   const assign = () => {
-    const assignmentError = assignStaffToStation(staff, userId, stationId);
+    const assignmentError = assignStaffToStation(userId, stationId);
     if (assignmentError) return setError(assignmentError);
-    toast.success("Đã phân công");
+    toast.success("Đã gửi Manager duyệt");
     setError("");
   };
 
   const unassign = (id: string) => {
-    unassignStaffFromStation(id);
-    toast.success("Đã gỡ phân công");
+    const unassignError = unassignStaffFromStation(id);
+    if (unassignError) return toast.error(unassignError);
+    toast.success("Đã gửi Manager duyệt");
   };
 
   return {
@@ -38,5 +44,6 @@ export function useAssignments() {
     error,
     assign,
     unassign,
+    pendingIds,
   };
 }
