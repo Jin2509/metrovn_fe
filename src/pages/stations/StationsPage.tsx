@@ -1,8 +1,9 @@
 import { Building2, Route } from "lucide-react";
 import { AppShell, PageTabs } from "@/components/app-shell";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ReasonDialog } from "@/components/shared";
+import { Button } from "@/components/ui/button";
 import { LinesPanel } from "@/pages/lines";
+import { ConfirmDialog } from "@/pages/stations/components/ConfirmDialog";
 import { StationDetail } from "@/pages/stations/components/StationDetail";
 import { StationFormDialog } from "@/pages/stations/components/StationFormDialog";
 import { StationTable } from "@/pages/stations/components/StationTable";
@@ -12,46 +13,62 @@ function StationListPanel() {
   const s = useStations();
   return (
     <div className="grid items-start gap-6 xl:grid-cols-[1fr_440px]">
-      {s.pendingCount > 0 && (
-        <Alert className="xl:col-span-2">
-          <AlertDescription>
-            Có <b>{s.pendingCount}</b> yêu cầu thêm/sửa/xóa ga đang chờ Manager phê duyệt. Thông tin
-            ga chỉ thay đổi sau khi được duyệt.
+      {s.loadError && (
+        <Alert variant="destructive" className="xl:col-span-2">
+          <AlertDescription className="flex items-center justify-between gap-3">
+            {s.loadError}
+            <Button size="sm" variant="outline" onClick={() => void s.reload()}>
+              Thử lại
+            </Button>
           </AlertDescription>
         </Alert>
       )}
       <StationTable
         rows={s.rows}
         total={s.total}
+        loading={s.loading}
         query={s.query}
         onQueryChange={s.setQuery}
         status={s.status}
         onStatusChange={s.setStatus}
         selectedId={s.selected?.id}
         onSelect={s.select}
-        onCreate={s.openCreate}
+        onCreate={s.canManage ? s.openCreate : undefined}
       />
       {s.selected && (
         <StationDetail
           station={s.selected}
-          onEdit={() => s.openEdit(s.selected!)}
-          onDelete={() => s.openDelete(s.selected!)}
+          allLines={s.lines}
+          network={s.mapNetwork}
+          onEdit={s.canManage ? () => s.openEdit(s.selected!) : undefined}
+          onDelete={s.canManage ? () => s.openDelete(s.selected!) : undefined}
           onSelectStation={s.select}
         />
       )}
       <StationFormDialog
         form={s.form}
         errors={s.errors}
+        pending={s.pending}
+        network={s.mapNetwork}
         onChange={(draft) => s.setForm((f) => (f ? { ...f, draft } : f))}
         onClose={() => s.setForm(null)}
-        onSubmit={s.submit}
+        onSubmit={() => void s.submit()}
       />
-      <ReasonDialog
+      <ConfirmDialog
         open={!!s.deleteTarget}
-        title={`Xóa ga ${s.deleteTarget?.name ?? ""}? Yêu cầu sẽ được gửi tới Manager để phê duyệt trước khi ga bị xóa khỏi hệ thống.`}
-        confirmLabel="Gửi yêu cầu xóa"
+        title={`Xoá ga ${s.deleteTarget?.nameStation ?? ""}?`}
+        description={
+          <>
+            <p>Thao tác này không thể hoàn tác.</p>
+            <p>
+              Chỉ xoá được ga không còn thuộc tuyến nào. Nếu ga chỉ tạm ngừng, hãy sửa trạng thái
+              sang <b>Tạm ngừng</b> hoặc <b>Bảo trì</b> thay vì xoá.
+            </p>
+          </>
+        }
+        pending={s.pending}
         onClose={s.closeDelete}
-        onConfirm={s.confirmDelete}
+        onConfirm={() => void s.confirmDelete()}
       />
     </div>
   );

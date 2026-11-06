@@ -107,9 +107,10 @@ export const navGroups: NavGroup[] = [
     items: [
       {
         to: "/approvals",
-        label: "Phê duyệt & chính sách",
+        label: "Hộp yêu cầu",
         icon: Inbox,
-        description: "Duyệt thay đổi và xem chính sách đang áp dụng",
+        description:
+          "Đề xuất của Admin chờ Manager duyệt, yêu cầu Manager gửi Admin và chính sách đang áp dụng",
       },
       {
         to: "/incidents",

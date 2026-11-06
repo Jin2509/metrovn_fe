@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { approvalLabel, approvalsStore, type Approval } from "@/mocks/admin";
 import { announcementsStore } from "@/mocks/announcements";
 import { incidentsStore } from "@/mocks/incidents";
+import { workRequestsStore } from "@/mocks/requests";
 import { applyApprovalDecision } from "@/pages/approvals/approvals.service";
 import {
   IncidentQuickList,
@@ -12,6 +13,7 @@ import {
   NetworkModel,
   RevenueChart,
   SeeAll,
+  TaskList,
 } from "@/pages/dashboard/components/DashboardWidgets";
 import { isOpen } from "@/pages/incidents/incidents.service";
 import { SEVERITY_LABELS } from "@/pages/notifications/notifications.constants";
@@ -102,6 +104,9 @@ export function ManagerDashboard() {
   const incidents = incidentsStore.use().filter(isOpen);
   const students = studentStats(studentVerificationsStore.use());
   const notices = announcementsStore.use().filter((a) => phaseOf(a) === "ACTIVE");
+  const requests = workRequestsStore.use();
+  const needsInfo = requests.filter((r) => r.status === "NEEDS_INFO").length;
+  const toConfirm = requests.filter((r) => r.status === "RESOLVED").length;
 
   return (
     <>
@@ -123,6 +128,23 @@ export function ManagerDashboard() {
           <NetworkModel />
         </div>
         <div className="min-w-0 space-y-6">
+          <TaskList
+            title="Yêu cầu gửi Admin"
+            tasks={[
+              {
+                label: "Admin cần bạn bổ sung thông tin",
+                count: needsInfo,
+                to: "/approvals",
+                tab: "sent",
+              },
+              {
+                label: "Admin báo xong, chờ bạn xác nhận",
+                count: toConfirm,
+                to: "/approvals",
+                tab: "sent",
+              },
+            ]}
+          />
           <IncidentQuickList />
           <Section title={`Thông báo đang hiệu lực (${notices.length})`}>
             {notices.length ? (

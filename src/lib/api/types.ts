@@ -119,3 +119,135 @@ export type PermissionResponse = {
   code: string;
   description: string;
 };
+
+// ---- Tuyến, ga, chuyển tuyến (/api/v1) ----
+// Toạ độ và khoảng cách là BigDecimal ở backend, JSON trả về dạng số.
+
+export type LineStatus = "ACTIVE" | "INACTIVE" | "UNDER_CONSTRUCTION";
+export type StationApiStatus = "ACTIVE" | "INACTIVE" | "MAINTENANCE";
+export type TransferStatus = "ACTIVE" | "INACTIVE";
+
+export type LineResponse = {
+  id: number;
+  code: string;
+  nameLine: string;
+  colorHex: string | null;
+  description: string | null;
+  status: LineStatus;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type StationResponse = {
+  id: number;
+  code: string;
+  nameStation: string;
+  latitude: number;
+  longitude: number;
+  address: string | null;
+  district: string | null;
+  imageUrl: string | null;
+  isInterchange: boolean;
+  status: StationApiStatus;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type LineStationResponse = {
+  id: number;
+  lineId: number;
+  lineCode: string;
+  lineName: string;
+  station: StationResponse;
+  /** Luôn liên tục 1..n. */
+  stationOrder: number;
+  /** Đoạn từ ga liền trước tới ga này; ga đầu tuyến luôn là 0. */
+  distanceFromPrevKm: number;
+  travelTimeFromPrevSeconds: number;
+  dwellTimeSeconds: number;
+  createdAt: string;
+};
+
+export type LineTransferResponse = {
+  id: number;
+  stationId: number;
+  fromLineId: number;
+  toLineId: number;
+  transferTimeMinutes: number;
+  status: TransferStatus;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type LineListQuery = {
+  code?: string;
+  name?: string;
+  status?: LineStatus;
+  page?: number;
+  size?: number;
+  /** Chỉ: id, code, nameLine, status, createdAt, updatedAt. */
+  sort?: string;
+};
+
+export type StationListQuery = {
+  q?: string;
+  /** Có `lineId` thì kết quả luôn theo thứ tự ga trên tuyến, `sort` bị bỏ qua. */
+  lineId?: number;
+  status?: StationApiStatus;
+  page?: number;
+  size?: number;
+  /** Chỉ: id, code, nameStation, district, status, createdAt, updatedAt. */
+  sort?: string;
+};
+
+export type CreateLineBody = {
+  code: string;
+  nameLine: string;
+  colorHex?: string;
+  description?: string;
+  status?: LineStatus;
+};
+/** Bỏ field / null: giữ nguyên. `""` ở colorHex, description: xoá giá trị. */
+export type UpdateLineBody = Partial<CreateLineBody>;
+
+export type CreateStationBody = {
+  code: string;
+  nameStation: string;
+  latitude: number;
+  longitude: number;
+  address?: string;
+  district?: string;
+  imageUrl?: string;
+  isInterchange?: boolean;
+  status?: StationApiStatus;
+};
+/** Bỏ field / null: giữ nguyên. `""` ở address, district, imageUrl: xoá giá trị. */
+export type UpdateStationBody = Partial<CreateStationBody>;
+
+export type AddLineStationBody = {
+  stationId: number;
+  /** Bỏ trống hoặc lớn hơn số ga: thêm vào cuối tuyến. */
+  stationOrder?: number;
+  /** Bỏ trống: backend tự tính đường chim bay. */
+  distanceFromPrevKm?: number;
+  /** Bỏ trống: backend ước lượng 60 giây/km. */
+  travelTimeFromPrevSeconds?: number;
+  dwellTimeSeconds?: number;
+};
+
+export type UpdateSegmentBody = {
+  distanceFromPrevKm?: number;
+  travelTimeFromPrevSeconds?: number;
+  dwellTimeSeconds?: number;
+};
+
+export type StationOrderItem = { stationId: number; stationOrder: number };
+
+export type CreateTransferBody = {
+  stationId: number;
+  fromLineId: number;
+  toLineId: number;
+  transferTimeMinutes?: number;
+  status?: TransferStatus;
+};
+export type UpdateTransferBody = Partial<CreateTransferBody>;

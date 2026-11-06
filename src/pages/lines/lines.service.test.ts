@@ -11,7 +11,17 @@ import {
 } from "@/lib/network";
 import { approvalsStore } from "@/mocks/admin";
 import { lineStationRows, lineStationsStore, stations } from "@/mocks/metro";
-import { buildLine3DModel, moveRow, visibleLabelIds } from "@/pages/lines/lines.service";
+import {
+  buildLine3DModel,
+  buildUpdateLineBody,
+  lineTotals,
+  moveRow,
+  recalculatedStationIds,
+  toLineDraft,
+  travelSecondsBetween,
+  validateLineDraft,
+  visibleLabelIds,
+} from "@/pages/lines/lines.service";
 
 const seedApprovals = [...approvalsStore.get()];
 afterEach(() => approvalsStore.set(() => seedApprovals));
@@ -132,5 +142,94 @@ describe("buildLine3DModel", () => {
     const model = buildLine3DModel([...rows, { stationId: "NOPE", km: 99 }], stations, "L1");
     expect(model.nodes[0].name).toBe("Suối Tiên");
     expect(model.nodes).toHaveLength(14);
+  });
+});
+
+// ---------- API tuyến/ga ----------
+
+const st = (id: number) => ({
+  id,
+  code: `ST${id}`,
+  nameStation: `Ga ${id}`,
+  latitude: 10,
+  longitude: 106,
+  address: null,
+  district: null,
+  imageUrl: null,
+  isInterchange: false,
+  status: "ACTIVE" as const,
+  createdAt: "",
+  updatedAt: "",
+});
+const row = (id: number, order: number, km: number, sec: number, dwell = 30) => ({
+  id: id * 100,
+  lineId: 1,
+  lineCode: "BTS-01",
+  lineName: "Tuyến 1",
+  station: st(id),
+  stationOrder: order,
+  distanceFromPrevKm: km,
+  travelTimeFromPrevSeconds: sec,
+  dwellTimeSeconds: dwell,
+  createdAt: "",
+});
+
+describe("recalculatedStationIds", () => {
+  const before = [row(1, 1, 0, 0), row(2, 2, 1, 60), row(3, 3, 2, 120)];
+
+  it("chèn ga vào giữa: đánh dấu ga mới và ga ngay sau vị trí chèn", () => {
+    const after = [row(1, 1, 0, 0), row(4, 2, 0.5, 30), row(2, 3, 0.6, 36), row(3, 4, 2, 120)];
+    expect(recalculatedStationIds(before, after)).toEqual([4, 2]);
+  });
+
+  it("gỡ ga: đánh dấu ga ngay sau ga bị gỡ", () => {
+    const after = [row(1, 1, 0, 0), row(3, 2, 2.8, 170)];
+    expect(recalculatedStationIds(before, after)).toEqual([3]);
+  });
+
+  it("không đổi gì thì không đánh dấu", () => {
+    expect(recalculatedStationIds(before, before)).toEqual([]);
+  });
+});
+
+describe("lineTotals / travelSecondsBetween", () => {
+  const rows = [row(1, 1, 0, 0, 30), row(2, 2, 1, 60, 20), row(3, 3, 2, 120, 40)];
+
+  it("tổng quãng đường và thời gian = Σ chạy + Σ dừng ở ga giữa", () => {
+    const totals = lineTotals(rows);
+    expect(totals.km).toBe(3);
+    expect(totals.sec).toBe(60 + 120 + 20);
+    expect(travelSecondsBetween(rows, 0, 2)).toBe(200);
+    expect(travelSecondsBetween(rows, 1, 2)).toBe(120);
+  });
+});
+
+describe("tuyến: form", () => {
+  const line = {
+    id: 1,
+    code: "BTS-01",
+    nameLine: "Bến Thành - Suối Tiên",
+    colorHex: "#00AEEF",
+    description: null,
+    status: "ACTIVE" as const,
+    createdAt: "",
+    updatedAt: "",
+  };
+
+  it("chỉ gửi field đã đổi; xoá trắng màu gửi chuỗi rỗng", () => {
+    expect(buildUpdateLineBody(toLineDraft(line), line)).toEqual({});
+    expect(
+      buildUpdateLineBody({ ...toLineDraft(line), colorHex: "", status: "INACTIVE" }, line),
+    ).toEqual({
+      colorHex: "",
+      status: "INACTIVE",
+    });
+  });
+
+  it("kiểm tra mã trùng, màu #RRGGBB", () => {
+    expect(validateLineDraft({ ...toLineDraft(line), colorHex: "red" }, [line], 1)).toEqual({
+      colorHex: "Màu phải có dạng #RRGGBB",
+    });
+    expect(validateLineDraft({ ...toLineDraft(line) }, [line]).code).toBe("Mã tuyến đã tồn tại");
   });
 });

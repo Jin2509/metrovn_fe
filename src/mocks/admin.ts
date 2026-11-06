@@ -1,5 +1,6 @@
 import { getActorName } from "@/lib/auth/session.store";
 import { createStore } from "@/lib/store";
+import { activeWorkRequestStore, appendThreadMessage } from "./requests";
 import { stations } from "./metro";
 
 const names = [
@@ -80,6 +81,8 @@ export type Approval = {
    * Admin chỉ được đề xuất; dữ liệu thật (ga/tuyến) chỉ được ghi vào kho dữ liệu sau khi duyệt.
    */
   payload?: unknown;
+  /** Yêu cầu của Manager mà đề xuất này thực hiện (xem `mocks/requests.ts`). */
+  workRequestId?: string;
 };
 // Mới nhất đứng đầu, giống thứ tự khi `submitApproval` thêm yêu cầu.
 export const approvalsStore = createStore<Approval[]>([
@@ -115,6 +118,7 @@ export const approvalsStore = createStore<Approval[]>([
     status: "APPROVED",
     decidedBy: "Trần Thị Bình",
     changes: [{ field: "Ô tô / giờ", old: "20.000 VND", new: "25.000 VND" }],
+    workRequestId: "W1",
   },
   {
     id: "A2",
@@ -166,6 +170,8 @@ export function submitApproval(
 ): string {
   // Thêm số đếm vì hai yêu cầu có thể tạo trong cùng một mili giây.
   const id = `A${Date.now()}-${++approvalSeq}`;
+  // Admin đang làm một yêu cầu của Manager thì đề xuất tự gắn vào yêu cầu đó.
+  const workRequestId = activeWorkRequestStore.get() ?? undefined;
   approvalsStore.set((a) => [
     {
       id,
@@ -176,9 +182,18 @@ export function submitApproval(
       status: "PENDING",
       changes,
       payload,
+      workRequestId,
     },
     ...a,
   ]);
+  if (workRequestId)
+    appendThreadMessage(
+      workRequestId,
+      `${getActorName()} đã gửi đề xuất “${title}” để Manager duyệt.`,
+      {
+        system: true,
+      },
+    );
   logAction("Gửi duyệt", title);
   return id;
 }

@@ -9,14 +9,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { STATION_STATUS_LABELS } from "@/lib/network";
+import type { StationApiStatus } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import type { StationStatus } from "@/mocks/metro";
+import { lineColor } from "@/pages/stations/hooks/useNetwork";
+import { STATION_STATUS_LABELS } from "@/pages/stations/stations.service";
 import type { StationListRow, StationStatusFilter } from "@/pages/stations/stations.types";
 
 export function StationTable({
   rows,
   total,
+  loading,
   query,
   onQueryChange,
   status,
@@ -27,23 +29,27 @@ export function StationTable({
 }: {
   rows: StationListRow[];
   total: number;
+  loading: boolean;
   query: string;
   onQueryChange: (q: string) => void;
   status: StationStatusFilter;
   onStatusChange: (s: StationStatusFilter) => void;
-  selectedId?: string;
-  onSelect: (id: string) => void;
-  onCreate: () => void;
+  selectedId?: number;
+  onSelect: (id: number) => void;
+  /** Bỏ trống khi người dùng không có quyền STATION_MANAGE. */
+  onCreate?: () => void;
 }) {
   return (
     <Section
       title="Danh sách ga"
-      description={`${total} ga trong hệ thống`}
+      description={loading ? "Đang tải…" : `${total} ga trong hệ thống`}
       action={
-        <Button onClick={onCreate}>
-          <Plus className="h-4 w-4" />
-          Thêm ga
-        </Button>
+        onCreate && (
+          <Button onClick={onCreate}>
+            <Plus className="h-4 w-4" />
+            Thêm ga
+          </Button>
+        )
       }
     >
       <div className="mb-3 flex flex-wrap gap-2">
@@ -59,7 +65,7 @@ export function StationTable({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="ALL">Mọi trạng thái</SelectItem>
-            {(Object.keys(STATION_STATUS_LABELS) as StationStatus[]).map((s) => (
+            {(Object.keys(STATION_STATUS_LABELS) as StationApiStatus[]).map((s) => (
               <SelectItem key={s} value={s}>
                 {STATION_STATUS_LABELS[s]}
               </SelectItem>
@@ -71,15 +77,15 @@ export function StationTable({
         rows={rows}
         pageSize={12}
         onRow={(r) => onSelect(r.id)}
-        empty="Không có ga phù hợp"
+        empty={loading ? "Đang tải danh sách ga…" : "Không có ga phù hợp"}
         cols={[
           { h: "Mã", c: (r) => <span className="font-mono text-xs">{r.code}</span> },
           {
             h: "Tên ga",
             c: (r) => (
               <span className={cn("font-medium", r.id === selectedId && "text-primary")}>
-                {r.name}
-                {r.interchange && (
+                {r.nameStation}
+                {r.isInterchange && (
                   <span className="ml-1.5 text-xs font-normal text-muted-foreground">
                     (chuyển tuyến)
                   </span>
@@ -87,7 +93,7 @@ export function StationTable({
               </span>
             ),
           },
-          { h: "Quận", c: (r) => r.district },
+          { h: "Quận", c: (r) => r.district || "—" },
           {
             h: "Tuyến",
             c: (r) => (
@@ -96,7 +102,7 @@ export function StationTable({
                   <span
                     key={l.id}
                     className="h-3 w-3 rounded-full"
-                    style={{ background: l.colorHex }}
+                    style={{ background: lineColor(l) }}
                     title={l.code}
                   />
                 ))}
@@ -104,7 +110,6 @@ export function StationTable({
               </div>
             ),
           },
-          { h: "Nhân viên", className: "text-right", c: (r) => r.staffCount || "—" },
           {
             h: "Trạng thái",
             c: (r) => <StatusBadge s={r.status} label={STATION_STATUS_LABELS[r.status]} />,

@@ -8,6 +8,8 @@ import { useAuth } from "@/lib/auth";
 import { sidebarCollapsedStore, toggleSidebar } from "@/lib/sidebar";
 import { cn } from "@/lib/utils";
 import { approvalsStore } from "@/mocks/admin";
+import { workRequestsStore } from "@/mocks/requests";
+import { inboxCount } from "@/pages/approvals/work-requests.service";
 import { incidentsStore } from "@/mocks/incidents";
 import { isOpen } from "@/pages/incidents/incidents.service";
 import {
@@ -17,7 +19,10 @@ import {
 
 /** Số việc đang chờ xử lý hiển thị cạnh mục menu tương ứng. */
 function useNavBadges(): Partial<Record<string, number>> {
-  const pending = approvalsStore.use().filter((a) => a.status === "PENDING").length;
+  const { role } = useAuth();
+  const approvals = approvalsStore.use();
+  const requests = workRequestsStore.use();
+  const pending = role ? inboxCount(role, requests, approvals) : 0;
   const incidents = incidentsStore.use().filter(isOpen).length;
   const students = studentStats(studentVerificationsStore.use()).needsReview;
   return { "/approvals": pending, "/incidents": incidents, "/student-verifications": students };

@@ -19,7 +19,19 @@ import {
   stations,
   stationsStore,
   stopsForStation,
+  type MetroLine,
+  type Station,
 } from "@/mocks/metro";
+
+/**
+ * Dữ liệu tuyến/ga thay cho dữ liệu giả (vd. lấy từ API). Bỏ trống thì bản đồ dùng dữ liệu giả.
+ * `paths[lineId]` là các ga của tuyến theo đúng thứ tự để vẽ đường tuyến.
+ */
+export type MapNetwork = {
+  lines: MetroLine[];
+  stations: Station[];
+  paths: Record<string, Station[]>;
+};
 
 /** Màu tô ga (nền) và viền cảnh báo — dùng mã màu cố định vì Leaflet vẽ ngoài hệ token CSS. */
 export type StationMarkerState = { fill: string; label?: string };
@@ -39,6 +51,7 @@ type Props = {
   highlightRoute?: string | null | undefined;
   onSelectStation?: ((id: string) => void) | undefined;
   height?: number | string | undefined;
+  network?: MapNetwork | undefined;
 };
 
 function PickLocation({ onPick }: { onPick: (lat: number, lng: number) => void }) {
@@ -60,18 +73,21 @@ function FitContainer() {
   return null;
 }
 
-function Focus({ id }: { id?: string | null | undefined }) {
+function Focus({ id, all }: { id?: string | null | undefined; all: Station[] }) {
   const map = useMap();
+  const s = all.find((x) => x.id === id);
+  const lat = s?.lat;
+  const lng = s?.lng;
   useEffect(() => {
-    const s = stations.find((x) => x.id === id);
-    if (s) map.flyTo([s.lat, s.lng], 16, { duration: 0.8 });
-  }, [id, map]);
+    if (lat !== undefined && lng !== undefined) map.flyTo([lat, lng], 16, { duration: 0.8 });
+  }, [lat, lng, map]);
   return null;
 }
 
 export default function MetroMap({
+  network,
   showBus = true,
-  visibleLines = ["L1", "L2"],
+  visibleLines,
   focusStationId,
   highlightRoute,
   onSelectStation,
@@ -84,6 +100,14 @@ export default function MetroMap({
   // Vẽ lại khi Admin thêm/sửa ga hoặc đổi thứ tự ga trên tuyến.
   stationsStore.use();
   lineStationsStore.use();
+  const net = network ?? {
+    lines,
+    stations,
+    paths: Object.fromEntries(lines.map((l) => [l.id, lineStations(l.id)])),
+  };
+  const shownLines = visibleLines ?? net.lines.map((l) => l.id);
+  // Trạm buýt chỉ có trong dữ liệu giả.
+  const withBus = showBus && !network;
   const busColor = "oklch(0.65 0.17 140)";
   return (
     <MapContainer
@@ -99,7 +123,7 @@ export default function MetroMap({
         url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
       <FitContainer />
-      <Focus id={focusStationId} />
+      <Focus id={focusStationId} all={net.stations} />
       {onPickLocation && <PickLocation onPick={onPickLocation} />}
       {pickedPoint && (
         <CircleMarker
@@ -112,12 +136,12 @@ export default function MetroMap({
           </Tooltip>
         </CircleMarker>
       )}
-      {lines
-        .filter((l) => visibleLines.includes(l.id))
+      {net.lines
+        .filter((l) => shownLines.includes(l.id))
         .map((l) => (
           <Polyline
             key={l.id}
-            positions={lineStations(l.id).map((s) => [s.lat, s.lng] as [number, number])}
+            positions={(net.paths[l.id] ?? []).map((s) => [s.lat, s.lng] as [number, number])}
             pathOptions={{
               color: l.colorHex,
               weight: 6,
@@ -126,7 +150,7 @@ export default function MetroMap({
             }}
           />
         ))}
-      {showBus &&
+      {withBus &&
         busStops
           .filter((b) => !highlightRoute || b.routes.includes(highlightRoute))
           .map((b) => {
@@ -142,7 +166,7 @@ export default function MetroMap({
               />
             );
           })}
-      {showBus &&
+      {withBus &&
         busStops
           .filter((b) => !highlightRoute || b.routes.includes(highlightRoute))
           .map((b) => (
@@ -164,10 +188,10 @@ export default function MetroMap({
               </Popup>
             </CircleMarker>
           ))}
-      {stations
-        .filter((s) => s.lineIds.some((l) => visibleLines.includes(l)))
+      {net.stations
+        .filter((s) => s.lineIds.some((l) => shownLines.includes(l)))
         .map((s) => {
-          const color = lines.find((l) => l.id === s.lineIds[0])!.colorHex;
+          const color = net.lines.find((l) => l.id === s.lineIds[0])?.colorHex ?? "#64748b";
           const state = stationStates?.[s.id];
           const focused = s.id === focusStationId;
           return (
@@ -193,12 +217,20 @@ export default function MetroMap({
                 <br />
                 {s.code} ·{" "}
                 {s.status === "ACTIVE"
-                  ? `${s.dailyFlow.toLocaleString("vi-VN")} lượt vào/ngày`
+                  ? network
+                    ? "Hoạt động"
+                    : `${s.dailyFlow.toLocaleString("vi-VN")} lượt vào/ngày`
                   : s.status === "MAINTENANCE"
                     ? "Đang bảo trì"
-                    : "Chưa khai thác"}
-                <br />
-                Trạm buýt kết nối: {stopsForStation(s.id).length}
+                    : network
+                      ? "Tạm ngừng"
+                      : "Chưa khai thác"}
+                {!network && (
+                  <>
+                    <br />
+                    Trạm buýt kết nối: {stopsForStation(s.id).length}
+                  </>
+                )}
               </Popup>
             </CircleMarker>
           );

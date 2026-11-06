@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { ActiveWorkBanner } from "@/components/layout/ActiveWorkBanner";
 import { Header } from "@/components/layout/Header";
 import { Sidebar } from "@/components/layout/Sidebar";
 
@@ -24,6 +25,7 @@ export function AppShell({
       <div className="flex min-w-0 flex-1 flex-col">
         <Header title={title} description={description} actions={actions} />
         <main className="mx-auto w-full max-w-[1600px] flex-1 space-y-6 p-4 md:p-6 lg:p-8">
+          <ActiveWorkBanner />
           {children}
         </main>
       </div>

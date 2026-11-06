@@ -1,129 +1,157 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
+import { ApiError, apiErrorMessage, stationsApi, type StationResponse } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
+import { NETWORK_KEY, networkKeys, useNetwork } from "@/pages/stations/hooks/useNetwork";
 import {
-  requestStationDelete,
-  requestStationUpsert,
-  validateStation,
-  type StationDraft,
-  type StationErrors,
-} from "@/lib/network";
-import { approvalsStore, usersStore } from "@/mocks/admin";
-import { lines, stationsStore, type Station } from "@/mocks/metro";
-import type { StationListRow, StationStatusFilter } from "@/pages/stations/stations.types";
+  EMPTY_STATION_DRAFT,
+  buildCreateStationBody,
+  buildUpdateStationBody,
+  stationErrorsFromApi,
+  toStationDraft,
+  validateStationDraft,
+} from "@/pages/stations/stations.service";
+import type {
+  StationDraft,
+  StationErrors,
+  StationListRow,
+  StationStatusFilter,
+} from "@/pages/stations/stations.types";
 
-const EMPTY: StationDraft = {
-  code: "",
-  name: "",
-  address: "",
-  district: "",
-  lat: 10.7769,
-  lng: 106.7009,
-  interchange: false,
-  status: "INACTIVE",
-};
+export const STATION_MANAGE = "STATION_MANAGE";
 
 export function useStations() {
   const { station: fromUrl } = useSearch({ strict: false }) as { station?: string };
   const navigate = useNavigate();
-  const stations = stationsStore.use();
-  const users = usersStore.use();
-  const pendingCount = approvalsStore
-    .use()
-    .filter((a) => a.type === "STATION" && a.status === "PENDING").length;
+  const queryClient = useQueryClient();
+  const { hasPermission } = useAuth();
+  const canManage = hasPermission(STATION_MANAGE);
+  const net = useNetwork();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<StationStatusFilter>("ALL");
-  const [form, setForm] = useState<{ id?: string; draft: StationDraft } | null>(null);
+  const [form, setForm] = useState<{ id?: number; draft: StationDraft } | null>(null);
   const [errors, setErrors] = useState<StationErrors>({});
-  const [deleteTarget, setDeleteTarget] = useState<Station | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<StationListRow | null>(null);
+  const [pending, setPending] = useState(false);
 
-  const all: StationListRow[] = stations.map((s) => ({
+  const all: StationListRow[] = net.stations.map((s) => ({
     ...s,
-    lines: s.lineIds.map((id) => lines.find((l) => l.id === id)!).filter(Boolean),
-    staffCount: users.filter(
-      (u) => u.role === "STAFF" && u.stationId === s.id && u.status === "ACTIVE",
-    ).length,
+    lines: net.linesByStation.get(s.id) ?? [],
   }));
   const q = query.trim().toLowerCase();
-  const rows = all.filter(
-    (s) =>
-      (status === "ALL" || s.status === status) &&
-      `${s.code} ${s.name} ${s.district}`.toLowerCase().includes(q),
-  );
-  const selectedId = all.some((s) => s.id === fromUrl) ? fromUrl! : all[0]?.id;
-  const select = (id: string) =>
+  const rows = all
+    .filter(
+      (s) =>
+        (status === "ALL" || s.status === status) &&
+        `${s.code} ${s.nameStation} ${s.district ?? ""}`.toLowerCase().includes(q),
+    )
+    .sort((a, b) => a.code.localeCompare(b.code));
+  const selected = all.find((s) => String(s.id) === fromUrl) ?? rows[0];
+  const select = (id: number) =>
     navigate({
       to: "/stations",
-      search: (prev: Record<string, unknown>) => ({ ...prev, station: id }),
+      search: (prev: Record<string, unknown>) => ({ ...prev, station: String(id) }),
       replace: true,
     } as never);
 
+  const reload = () => queryClient.invalidateQueries({ queryKey: NETWORK_KEY });
+
   const openCreate = () => {
     setErrors({});
-    setForm({ draft: EMPTY });
+    setForm({ draft: EMPTY_STATION_DRAFT });
   };
-  const openEdit = (s: Station) => {
+  const openEdit = (s: StationResponse) => {
     setErrors({});
-    setForm({
-      id: s.id,
-      draft: {
-        code: s.code,
-        name: s.name,
-        address: s.address,
-        district: s.district,
-        lat: s.lat,
-        lng: s.lng,
-        interchange: s.interchange,
-        status: s.status,
-      },
-    });
-  };
-  const submit = () => {
-    if (!form) return;
-    const next = validateStation(form.draft, stations, form.id);
-    setErrors(next);
-    if (Object.keys(next).length) return;
-    const error = requestStationUpsert(form.draft, form.id);
-    if (error) return toast.error(error);
-    toast.success(
-      form.id
-        ? "Đã gửi yêu cầu sửa ga tới Manager. Thông tin chỉ thay đổi sau khi được phê duyệt."
-        : "Đã gửi yêu cầu thêm ga tới Manager để phê duyệt.",
-    );
-    setForm(null);
+    setForm({ id: s.id, draft: toStationDraft(s) });
   };
 
-  const openDelete = (s: Station) => setDeleteTarget(s);
-  const confirmDelete = (reason: string) => {
-    if (!deleteTarget) return;
-    const error = requestStationDelete(deleteTarget, reason);
-    if (error) {
-      toast.error(error);
-      setDeleteTarget(null);
-      return;
+  const submit = async () => {
+    if (!form || pending) return;
+    const next = validateStationDraft(form.draft, net.stations, form.id);
+    setErrors(next);
+    if (Object.keys(next).length) return;
+    const current = form.id ? net.stations.find((s) => s.id === form.id) : undefined;
+    const body = current ? buildUpdateStationBody(form.draft, current) : null;
+    if (body && !Object.keys(body).length) return toast.info("Chưa có thay đổi nào");
+    setPending(true);
+    try {
+      const saved = current
+        ? await stationsApi.update(current.id, body!)
+        : await stationsApi.create(buildCreateStationBody(form.draft));
+      await reload();
+      toast.success(
+        current ? `Đã cập nhật ga ${saved.nameStation}` : `Đã thêm ga ${saved.nameStation}`,
+      );
+      setForm(null);
+      select(saved.id);
+    } catch (error) {
+      const fieldErrors = stationErrorsFromApi(error);
+      if (fieldErrors) setErrors(fieldErrors);
+      else toast.error(apiErrorMessage(error));
+      if (error instanceof ApiError && error.status === 404) {
+        setForm(null);
+        void reload();
+      }
+    } finally {
+      setPending(false);
     }
-    toast.success(`Đã gửi yêu cầu xóa ga ${deleteTarget.name} tới Manager để phê duyệt.`);
-    setDeleteTarget(null);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget || pending) return;
+    setPending(true);
+    try {
+      // Kiểm tra lại với backend: danh sách tuyến trên màn hình có thể đã cũ.
+      const lines = await queryClient.fetchQuery({
+        queryKey: networkKeys.stationLines(deleteTarget.id),
+        queryFn: () => stationsApi.lines(deleteTarget.id),
+        staleTime: 0,
+      });
+      if (lines.length) {
+        toast.error(
+          `Ga đang thuộc tuyến ${lines.map((l) => l.code).join(", ")}. Hãy gỡ ga khỏi tuyến ở tab "Tuyến & thứ tự ga" trước khi xoá, hoặc chuyển trạng thái sang Tạm ngừng/Bảo trì.`,
+        );
+        return;
+      }
+      await stationsApi.remove(deleteTarget.id);
+      toast.success(`Đã xoá ga ${deleteTarget.nameStation}`);
+      setDeleteTarget(null);
+      await reload();
+    } catch (error) {
+      toast.error(apiErrorMessage(error));
+      if (error instanceof ApiError && (error.status === 409 || error.status === 404))
+        void reload();
+    } finally {
+      setPending(false);
+    }
   };
 
   return {
+    canManage,
+    loading: net.loading,
+    loadError: net.loadError,
+    reload,
+    mapNetwork: net.mapNetwork,
+    lines: net.lines,
     rows,
     total: all.length,
-    pendingCount,
     query,
     setQuery,
     status,
     setStatus,
-    selected: all.find((s) => s.id === selectedId),
+    selected,
     select,
     form,
     setForm,
     errors,
+    pending,
     openCreate,
     openEdit,
     submit,
     deleteTarget,
-    openDelete,
+    openDelete: (s: StationListRow) => setDeleteTarget(s),
     closeDelete: () => setDeleteTarget(null),
     confirmDelete,
   };

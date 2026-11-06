@@ -12,7 +12,7 @@ const REFRESH_LOCK = "metro.auth.refresh";
 type QueryValue = string | number | undefined;
 
 export type ApiRequest = {
-  method?: "GET" | "POST" | "PUT" | "PATCH";
+  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: unknown;
   query?: Record<string, QueryValue>;
   /** false: không dùng token của phiên và không refresh khi gặp 401 (đăng nhập, API /api/auth). */

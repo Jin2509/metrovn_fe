@@ -2,6 +2,8 @@ import { useMemo } from "react";
 import { Section } from "@/components/shared";
 import { availableTrains } from "@/lib/operations";
 import { approvalLabel, approvalsStore, parkingLotsStore } from "@/mocks/admin";
+import { workRequestsStore } from "@/mocks/requests";
+import { inboxCount } from "@/pages/approvals/work-requests.service";
 import { announcementsStore } from "@/mocks/announcements";
 import { handledQuestionsStore, messagesStore, sessionsStore } from "@/mocks/chatbot";
 import { stationsStore } from "@/mocks/metro";
@@ -25,7 +27,9 @@ export function AdminDashboard() {
   const sessions = sessionsStore.use();
   const messages = messagesStore.use();
   const handled = handledQuestionsStore.use();
-  const pending = approvalsStore.use().filter((a) => a.status === "PENDING");
+  const approvals = approvalsStore.use();
+  const pending = approvals.filter((a) => a.status === "PENDING");
+  const workToDo = inboxCount("ADMIN", workRequestsStore.use(), approvals);
   const fullLots = parkingLotsStore.use().filter((p) => p.used >= 0.85).length;
 
   const failedSends = announcements.reduce((n, a) => n + (a.delivery?.failed ?? 0), 0);
@@ -65,6 +69,7 @@ export function AdminDashboard() {
           <IncidentQuickList />
           <TaskList
             tasks={[
+              { label: "Yêu cầu từ Manager cần xử lý", count: workToDo, to: "/approvals" },
               {
                 label: "Lượt gửi thông báo bị lỗi",
                 count: failedSends,

@@ -48,7 +48,9 @@ describe("canAccessRoute", () => {
     expect(canAccessRoute("ADMIN", "/users")).toBe(true);
     expect(canAccessRoute("ADMIN", "/audit-logs")).toBe(true);
     expect(canAccessRoute("ADMIN", "/transactions")).toBe(true);
-    expect(canAccessRoute("ADMIN", "/approvals")).toBe(false);
+    // Vào Hộp yêu cầu để xử lý yêu cầu của Manager, nhưng không được duyệt đề xuất.
+    expect(canAccessRoute("ADMIN", "/approvals")).toBe(true);
+    expect(can("ADMIN", "approval.decide")).toBe(false);
     expect(canAccessRoute("ADMIN", "/period-closing")).toBe(false);
   });
 

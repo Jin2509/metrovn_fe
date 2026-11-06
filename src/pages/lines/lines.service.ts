@@ -1,3 +1,12 @@
+import {
+  ApiError,
+  type CreateLineBody,
+  type LineResponse,
+  type LineStationResponse,
+  type LineStatus,
+  type StationOrderItem,
+  type UpdateLineBody,
+} from "@/lib/api";
 import { haversine } from "@/lib/geo";
 import {
   lineDepots,
@@ -140,4 +149,151 @@ export function visibleLabelIds(
     visible.add(label.id);
   }
   return visible;
+}
+
+// ---------- Tuyến & ga trên tuyến (API /api/v1) ----------
+
+/**
+ * Ga có đoạn nối từ ga trước vừa bị backend tính lại sau khi thêm/xoá/sắp xếp: ga mới, ga có ga
+ * liền trước thay đổi, hoặc số liệu đoạn thay đổi. Bỏ qua ga đầu tuyến (luôn là 0).
+ * Giá trị tự tính chỉ là ước lượng đường chim bay nên cần nhắc admin kiểm tra lại.
+ */
+export function recalculatedStationIds(
+  before: LineStationResponse[],
+  after: LineStationResponse[],
+): number[] {
+  const prev = new Map(
+    before.map((row, i) => [row.station.id, { row, prevId: before[i - 1]?.station.id }]),
+  );
+  return after.flatMap((row, i) => {
+    if (i === 0) return [];
+    const old = prev.get(row.station.id);
+    const changed =
+      !old ||
+      old.prevId !== after[i - 1].station.id ||
+      old.row.distanceFromPrevKm !== row.distanceFromPrevKm ||
+      old.row.travelTimeFromPrevSeconds !== row.travelTimeFromPrevSeconds;
+    return changed ? [row.station.id] : [];
+  });
+}
+
+/** Lý trình (km) và thời gian chạy cộng dồn (giây, gồm thời gian dừng ở các ga giữa). */
+export function lineTotals(rows: LineStationResponse[]) {
+  let km = 0;
+  let sec = 0;
+  const chainage = rows.map((row, i) => {
+    if (i > 0) {
+      km += row.distanceFromPrevKm;
+      sec += row.travelTimeFromPrevSeconds + (i > 1 ? rows[i - 1].dwellTimeSeconds : 0);
+    }
+    return { stationId: row.station.id, km, sec };
+  });
+  return { chainage, km, sec };
+}
+
+/** Thời gian ước tính giữa ga i và ga j (i < j, theo chỉ số mảng). */
+export function travelSecondsBetween(rows: LineStationResponse[], i: number, j: number) {
+  let sec = 0;
+  for (let k = i + 1; k <= j; k++) sec += rows[k].travelTimeFromPrevSeconds;
+  for (let k = i + 1; k < j; k++) sec += rows[k].dwellTimeSeconds;
+  return sec;
+}
+
+export function moveItem<T>(items: T[], from: number, to: number) {
+  if (to < 0 || to >= items.length || from === to) return items;
+  const next = [...items];
+  const [moved] = next.splice(from, 1);
+  next.splice(to, 0, moved);
+  return next;
+}
+
+export const toOrderItems = (stationIds: number[]): StationOrderItem[] =>
+  stationIds.map((stationId, i) => ({ stationId, stationOrder: i + 1 }));
+
+export const LINE_STATUS_LABELS: Record<LineStatus, string> = {
+  ACTIVE: "Đang khai thác",
+  UNDER_CONSTRUCTION: "Đang xây dựng",
+  INACTIVE: "Ngừng khai thác",
+};
+
+export type LineDraft = {
+  code: string;
+  name: string;
+  colorHex: string;
+  description: string;
+  status: LineStatus;
+};
+export type LineErrors = Partial<Record<keyof LineDraft, string>>;
+
+export const EMPTY_LINE_DRAFT: LineDraft = {
+  code: "",
+  name: "",
+  colorHex: "#00AEEF",
+  description: "",
+  status: "UNDER_CONSTRUCTION",
+};
+
+export const toLineDraft = (line: LineResponse): LineDraft => ({
+  code: line.code,
+  name: line.nameLine,
+  colorHex: line.colorHex ?? "",
+  description: line.description ?? "",
+  status: line.status,
+});
+
+export function validateLineDraft(
+  draft: LineDraft,
+  all: LineResponse[],
+  editingId?: number,
+): LineErrors {
+  const errors: LineErrors = {};
+  const code = draft.code.trim();
+  if (!code) errors.code = "Vui lòng nhập mã tuyến";
+  else if (code.length > 20) errors.code = "Mã tuyến tối đa 20 ký tự";
+  else if (all.some((l) => l.id !== editingId && l.code.toLowerCase() === code.toLowerCase()))
+    errors.code = "Mã tuyến đã tồn tại";
+  const name = draft.name.trim();
+  if (!name) errors.name = "Vui lòng nhập tên tuyến";
+  else if (name.length > 100) errors.name = "Tên tuyến tối đa 100 ký tự";
+  const color = draft.colorHex.trim();
+  if (color && !/^#[0-9A-Fa-f]{6}$/.test(color)) errors.colorHex = "Màu phải có dạng #RRGGBB";
+  return errors;
+}
+
+export const buildCreateLineBody = (draft: LineDraft): CreateLineBody => ({
+  code: draft.code.trim(),
+  nameLine: draft.name.trim(),
+  colorHex: draft.colorHex.trim() || undefined,
+  description: draft.description.trim() || undefined,
+  status: draft.status,
+});
+
+/** Chỉ gửi field đã đổi; `""` ở colorHex/description để xoá giá trị. */
+export function buildUpdateLineBody(draft: LineDraft, current: LineResponse): UpdateLineBody {
+  const body: UpdateLineBody = {};
+  if (draft.code.trim() !== current.code) body.code = draft.code.trim();
+  if (draft.name.trim() !== current.nameLine) body.nameLine = draft.name.trim();
+  if (draft.colorHex.trim() !== (current.colorHex ?? "")) body.colorHex = draft.colorHex.trim();
+  if (draft.description.trim() !== (current.description ?? ""))
+    body.description = draft.description.trim();
+  if (draft.status !== current.status) body.status = draft.status;
+  return body;
+}
+
+/** Lỗi từ backend → lỗi theo ô nhập; `null` nếu không gắn được vào ô nào. */
+export function lineErrorsFromApi(error: unknown): LineErrors | null {
+  if (!(error instanceof ApiError)) return null;
+  if (error.status === 409) return { code: error.detail || "Mã tuyến đã tồn tại" };
+  if (error.status !== 400) return null;
+  const map: Record<string, keyof LineDraft> = {
+    code: "code",
+    nameLine: "name",
+    colorHex: "colorHex",
+    description: "description",
+    status: "status",
+  };
+  const errors: LineErrors = {};
+  for (const [field, message] of Object.entries(error.fieldErrors))
+    if (map[field]) errors[map[field]] = message;
+  return Object.keys(errors).length ? errors : null;
 }

@@ -18,8 +18,10 @@ export const ROLE_LABELS: Record<Role, string> = {
 };
 
 export const ROLE_DESCRIPTIONS: Record<Role, string> = {
-  ADMIN: "Cấu hình mạng lưới, giá vé, Hành trình xanh, tài khoản và xử lý sự cố tại ga",
-  MANAGER: "Phê duyệt thay đổi, xem xét hồ sơ sinh viên, xử lý sự cố và theo dõi chính sách",
+  ADMIN:
+    "Cấu hình mạng lưới, giá vé, Hành trình xanh, tài khoản, xử lý sự cố tại ga và yêu cầu từ Manager",
+  MANAGER:
+    "Phê duyệt thay đổi, gửi yêu cầu cho Admin, xem xét hồ sơ sinh viên, xử lý sự cố và theo dõi chính sách",
   ACCOUNTANT: "Giao dịch, đối soát và chốt kỳ tài chính",
 };
 
@@ -46,8 +48,9 @@ export const ROUTE_ACCESS = {
   "/chatbot": OVERSIGHT,
   // Hệ thống tự xác nhận sinh viên. Admin chỉnh quy tắc, Manager xem hồ sơ ngoại lệ (ACTION_ACCESS).
   "/student-verifications": OVERSIGHT,
-  // Điều hành (tab: hộp phê duyệt/chính sách đang áp dụng)
-  "/approvals": MANAGER,
+  // Điều hành: hộp yêu cầu hai chiều. Manager duyệt đề xuất của Admin và gửi yêu cầu cho Admin;
+  // Admin xử lý yêu cầu và theo dõi đề xuất của mình. Ai được làm gì nằm ở ACTION_ACCESS.
+  "/approvals": OVERSIGHT,
   // Sự cố nhân viên ga báo từ app: chỉ Admin và Manager.
   "/incidents": OVERSIGHT,
   // Tài chính (đối soát nằm ngay trong danh sách giao dịch)
@@ -89,6 +92,12 @@ export const ACTION_ACCESS = {
   "student.configure": ADMIN,
   /** Đề xuất thay đổi tham số hệ thống. */
   "params.edit": ADMIN,
+  /** Phê duyệt / từ chối đề xuất thay đổi của Admin. */
+  "approval.decide": MANAGER,
+  /** Gửi yêu cầu cho Admin, xác nhận kết quả hoặc mở lại yêu cầu. */
+  "workRequest.create": MANAGER,
+  /** Nhận, hỏi lại, báo hoàn thành hoặc từ chối yêu cầu của Manager. */
+  "workRequest.handle": ADMIN,
 } as const satisfies Record<string, readonly Role[]>;
 
 export type Action = keyof typeof ACTION_ACCESS;

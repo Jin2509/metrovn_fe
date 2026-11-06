@@ -11,11 +11,15 @@ import { APPROVAL_STATUS_OPTIONS } from "@/pages/approvals/approvals.constants";
 import type { ApprovalStatusFilter } from "@/pages/approvals/approvals.types";
 
 export function ApprovalListSection({
+  title = "Đề xuất thay đổi",
+  description,
   rows,
   status,
   onStatusChange,
   onSelect,
 }: {
+  title?: string;
+  description?: string;
   rows: Approval[];
   status: ApprovalStatusFilter;
   onStatusChange: (status: ApprovalStatusFilter) => void;
@@ -23,7 +27,8 @@ export function ApprovalListSection({
 }) {
   return (
     <Section
-      title="Yêu cầu"
+      title={title}
+      description={description}
       action={
         <Select
           value={status}

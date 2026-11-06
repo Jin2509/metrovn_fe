@@ -1,6 +1,6 @@
 import { CATALOGS } from "@/lib/catalogs";
 import { applyCatalogChange, checkCatalogChange, isCatalogPayload } from "@/lib/change-requests";
-import { getActorName } from "@/lib/auth/session.store";
+import { authStore, getActorName } from "@/lib/auth/session.store";
 import {
   applyLineOrderApproval,
   applyStationApproval,
@@ -9,6 +9,7 @@ import {
 } from "@/lib/network";
 import { approvalsStore, logAction, type Approval } from "@/mocks/admin";
 import type { ApprovalDecisionStatus } from "@/pages/approvals/approvals.types";
+import { syncAfterChangeDecision } from "@/pages/approvals/work-requests.service";
 import { applyGreenConfig } from "@/pages/green/green.service";
 import { applyParams, type ParamValues } from "@/pages/systemparams/systemparams.service";
 import { applyOperationDecision } from "@/pages/trains/trains.service";
@@ -22,6 +23,12 @@ export function applyApprovalDecision(
   status: ApprovalDecisionStatus,
   reason?: string,
 ): string | null {
+  const current = approvalsStore.get().find((item) => item.id === approval.id);
+  if (current && current.status !== "PENDING") return "Yêu cầu này đã được quyết định trước đó.";
+  // Người gửi đề xuất không được tự duyệt (tách người đề xuất và người duyệt).
+  const actor = authStore.get().user;
+  if (actor && approval.by === actor.name)
+    return "Không thể tự quyết định đề xuất do chính mình gửi.";
   const { payload } = approval;
   const catalog = isCatalogPayload(payload) ? CATALOGS[payload.catalog] : undefined;
   if (status === "APPROVED" && catalog) {
@@ -47,6 +54,7 @@ export function applyApprovalDecision(
     if (approval.type === "SYSTEM_PARAM") applyParams(payload as ParamValues, approval.by);
   }
 
+  syncAfterChangeDecision(approval, status === "APPROVED", reason);
   logAction(status === "APPROVED" ? "Phê duyệt" : "Từ chối", approval.title);
   return null;
 }
