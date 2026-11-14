@@ -33,8 +33,9 @@ export function SelectedStationCard({
       <div className="space-y-3 text-sm">
         {s.status === "ACTIVE" && (
           <p className="text-muted-foreground">
-            {s.dailyFlow.toLocaleString("vi-VN")} lượt vào/ngày · {busStops.length} trạm buýt kết
-            nối
+            {busStops.length
+              ? `${busStops.length} trạm buýt kết nối (bật lớp xe buýt để tải)`
+              : "Bật lớp xe buýt để xem trạm buýt kết nối"}
           </p>
         )}
         {announcements.map((a) => (

@@ -1,19 +1,23 @@
 import { Bot, ClipboardList, Hand, History, Settings2, UserRoundCheck } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
 import { AppShell, PageTabs } from "@/components/app-shell";
-import { DataTable, ReasonDialog, Section, StatCard, StatusBadge } from "@/components/shared";
+import {
+  DataTable,
+  LoadState,
+  ReasonDialog,
+  Section,
+  StatCard,
+  StatusBadge,
+} from "@/components/shared";
 import { Badge } from "@/components/ui/badge";
-import type { StudentVerification } from "@/mocks/student-verifications";
+import type { StudentVerification } from "@/stores/student-verifications";
 import { formatDate, formatDateTime } from "@/pages/studentverification/components/format";
 import { ReviewSheet } from "@/pages/studentverification/components/ReviewSheet";
 import { RulesPanel } from "@/pages/studentverification/components/RulesPanel";
+import { useStudentReview } from "@/pages/studentverification/hooks";
 import {
-  approveStudent,
+  REVIEW_SLA_HOURS,
   isOverdue,
-  rejectStudent,
-  revokeStudent,
-  reviewSlaHours,
   studentStats,
   studentVerificationsStore,
 } from "@/pages/studentverification/student.service";
@@ -22,14 +26,14 @@ const FLOW = [
   ["Hành khách gửi thẻ", "Chụp thẻ trên app và đồng ý cho AI đọc."],
   ["AI đọc thẻ", "Backend lấy họ tên, trường, mã sinh viên, hạn thẻ và độ tin cậy."],
   ["Đối chiếu quy tắc", "Kiểm tra hạn thẻ, danh sách trường, tên tài khoản, mã trùng."],
-  ["Có kết quả", "Rõ ràng thì tự duyệt hoặc tự từ chối. Nghi ngờ thì chuyển Manager."],
+  ["Có kết quả", "Rõ ràng thì tự duyệt hoặc tự từ chối. Nghi ngờ thì chuyển người xem."],
 ];
 
 function HowItWorks() {
   return (
     <Section
       title="Hệ thống tự xử lý, Manager chỉ xem ngoại lệ"
-      description="Ảnh thẻ được xóa ngay khi có kết quả. Mỗi lần duyệt có hiệu lực tối đa 1 năm và không vượt hạn thẻ."
+      description="Ảnh thẻ chỉ giữ trong thời gian lưu trữ của chính sách. Thời hạn ưu đãi không vượt hạn thẻ."
     >
       <ol className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {FLOW.map(([title, detail], index) => (
@@ -61,9 +65,10 @@ function SubmissionTable({
     <DataTable
       rows={rows}
       empty={empty}
+      rowKey={(item) => item.id}
+      rowActionLabel={(item) => `Xem hồ sơ của ${item.accountName}`}
       onRow={onSelect}
       cols={[
-        { h: "Mã", c: (item) => <b>{item.id}</b> },
         {
           h: "Tài khoản",
           c: (item) => (
@@ -73,33 +78,35 @@ function SubmissionTable({
             </>
           ),
         },
-        { h: "Trường", c: (item) => item.card.school ?? "—" },
+        { h: "Trường", c: (item) => item.ai.school ?? item.declared.school },
         {
           h: "Gửi lúc",
           c: (item) => (
             <span className="flex flex-wrap items-center gap-2 whitespace-nowrap">
               {formatDateTime(item.submittedAt)}
-              {isOverdue(item) && <Badge variant="destructive">Quá {reviewSlaHours()} giờ</Badge>}
+              {isOverdue(item) && <Badge variant="destructive">Quá {REVIEW_SLA_HOURS} giờ</Badge>}
             </span>
           ),
         },
         { h: "Trạng thái", c: (item) => <StatusBadge s={item.status} /> },
         {
-          h: "Người quyết định",
-          c: (item) => (item.status === "NEEDS_REVIEW" ? "—" : (item.decidedBy ?? "Tự động")),
+          h: "Quyết định",
+          c: (item) =>
+            item.decisionSource === "MANUAL" ? "Người xem" : item.decisionSource ? "Tự động" : "—",
         },
-        { h: "Hiệu lực đến", c: (item) => formatDate(item.expiresAt) ?? "—" },
+        { h: "Hiệu lực đến", c: (item) => formatDate(item.approvedUntil) ?? "—" },
       ]}
     />
   );
 }
 
 export function StudentVerificationsPage() {
+  const r = useStudentReview();
   const items = studentVerificationsStore.use();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [rejecting, setRejecting] = useState(false);
   const selected = items.find((item) => item.id === selectedId) ?? null;
-  const revoking = selected?.status === "VERIFIED";
+  const revoking = selected?.status === "APPROVED";
   const stats = studentStats(items);
   const queue = items
     .filter((item) => item.status === "NEEDS_REVIEW")
@@ -119,7 +126,7 @@ export function StudentVerificationsPage() {
         <StatCard
           label="Cần xem xét"
           value={stats.needsReview}
-          hint={`Xử lý trong ${reviewSlaHours()} giờ, như app đã báo`}
+          hint={`Xử lý trong ${REVIEW_SLA_HOURS} giờ, như app đã báo`}
           icon={Hand}
           tone={stats.needsReview ? "accent" : "muted"}
         />
@@ -130,6 +137,7 @@ export function StudentVerificationsPage() {
           icon={UserRoundCheck}
         />
       </div>
+      <LoadState loading={r.loading} error={r.loadError} onRetry={r.reload} />
       <HowItWorks />
       <PageTabs
         tabs={[
@@ -160,19 +168,25 @@ export function StudentVerificationsPage() {
               </Section>
             ),
           },
-          { value: "rules", label: "Quy tắc tự động", icon: Settings2, content: <RulesPanel /> },
+          {
+            value: "rules",
+            label: "Quy tắc tự động",
+            icon: Settings2,
+            content: <RulesPanel canEdit={r.canConfigure} />,
+          },
         ]}
       />
       <ReviewSheet
         item={selected}
+        canVerify={r.canVerify}
+        pending={r.pending}
         onClose={() => setSelectedId(null)}
-        onApprove={() => {
-          if (selected) approveStudent(selected);
-          toast.success("Đã duyệt. Hành khách sẽ nhận thông báo.");
-          setSelectedId(null);
+        onApprove={(until) => {
+          if (selected) void r.approve(selected, until).then((ok) => ok && setSelectedId(null));
         }}
         onReject={() => setRejecting(true)}
         onRevoke={() => setRejecting(true)}
+        onRetryAi={() => selected && void r.retryAi(selected)}
       />
       <ReasonDialog
         open={rejecting}
@@ -180,14 +194,12 @@ export function StudentVerificationsPage() {
         confirmLabel={revoking ? "Thu hồi" : "Từ chối"}
         onClose={() => setRejecting(false)}
         onConfirm={(reason) => {
-          if (selected) (revoking ? revokeStudent : rejectStudent)(selected, reason);
-          toast.success(
-            revoking
-              ? "Đã thu hồi. Hành khách mất giá sinh viên và sẽ thấy lý do."
-              : "Đã từ chối. Hành khách sẽ thấy lý do và gửi lại được.",
-          );
-          setRejecting(false);
-          setSelectedId(null);
+          if (!selected) return;
+          void (revoking ? r.revoke : r.reject)(selected, reason).then((ok) => {
+            if (!ok) return;
+            setRejecting(false);
+            setSelectedId(null);
+          });
         }}
       />
     </AppShell>

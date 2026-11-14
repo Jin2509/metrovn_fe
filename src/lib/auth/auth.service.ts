@@ -1,5 +1,12 @@
-import { ApiError, NETWORK_ERROR_STATUS, authApi, meApi, type MeResponse } from "@/lib/api";
-import { logAction } from "@/mocks/admin";
+import {
+  ApiError,
+  NETWORK_ERROR_STATUS,
+  authApi,
+  isTwoFactorChallenge,
+  meApi,
+  type MeResponse,
+} from "@/lib/api";
+import { logAction } from "@/stores/admin";
 import { ROLES } from "./permissions";
 import type { LoginInput, Role, SessionTokens, SessionUser } from "./auth.types";
 import {
@@ -23,6 +30,7 @@ export class AuthError extends Error {
       | "INVALID_NEW_PASSWORD"
       | "INVALID_RESET_CODE"
       | "RESET_CODE_LOCKED"
+      | "TWO_FACTOR_REQUIRED"
       | "NETWORK",
     message: string,
   ) {
@@ -74,7 +82,14 @@ function toLoginError(error: unknown) {
 
 export async function login({ email, password, remember }: LoginInput): Promise<SessionUser> {
   try {
-    const tokens = await authApi.login({ email: email.trim().toLowerCase(), password });
+    const result = await authApi.login({ email: email.trim().toLowerCase(), password });
+    // Web chưa có màn nhập OTP đăng nhập (`authApi.verifyLoginCode`).
+    if (isTwoFactorChallenge(result))
+      throw new AuthError(
+        "TWO_FACTOR_REQUIRED",
+        "Tài khoản đang bật xác thực 2 bước, web quản trị chưa hỗ trợ đăng nhập bằng mã OTP",
+      );
+    const tokens = result;
     const user = toSessionUser(await meApi.get(tokens.accessToken));
     if (!user) {
       revokeTokens(tokens);

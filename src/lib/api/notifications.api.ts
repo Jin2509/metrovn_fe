@@ -9,6 +9,8 @@ export const notificationsApi = {
   markRead: (id: string) =>
     apiRequest(`/api/me/notifications/${encodeURIComponent(id)}/read`, { method: "PATCH" }),
   markAllRead: () => apiRequest("/api/me/notifications/read-all", { method: "POST" }),
+  remove: (id: string) =>
+    apiRequest(`/api/me/notifications/${encodeURIComponent(id)}`, { method: "DELETE" }),
   /** /api/admin/notifications: cần NOTIFICATION_MANAGE. */
   send: (body: SendNotificationBody) =>
     apiRequest<{ recipients: number }>("/api/admin/notifications", { method: "POST", body }),

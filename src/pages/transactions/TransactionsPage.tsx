@@ -1,56 +1,95 @@
 import { AppShell } from "@/components/app-shell";
-import { money, Section } from "@/components/shared";
+import { DataTable, LoadState, money, Section, ServerPager } from "@/components/shared";
 import { Button } from "@/components/ui/button";
+import { fmtInstant } from "@/lib/query-sync";
+import { ReconciliationSection } from "@/pages/transactions/components/ReconciliationSection";
 import { TransactionDetailSheet } from "@/pages/transactions/components/TransactionDetailSheet";
 import { TransactionFilters } from "@/pages/transactions/components/TransactionFilters";
 import { TransactionsTable } from "@/pages/transactions/components/TransactionsTable";
 import { useTransactions } from "@/pages/transactions/hooks/useTransactions";
+import {
+  PAYMENT_METHOD_LABEL,
+  PAYMENT_PURPOSE_LABEL,
+} from "@/pages/transactions/transactions.constants";
 
-export function TransactionsPage({ initialRec }: { initialRec?: string }) {
-  const t = useTransactions(initialRec);
+export function TransactionsPage() {
+  const t = useTransactions();
+
+  if (!t.canManage)
+    return (
+      <AppShell title="Giao dịch & đối soát">
+        <p className="text-sm text-muted-foreground">
+          Tài khoản chưa có quyền xem giao dịch (PAYMENT_MANAGE).
+        </p>
+      </AppShell>
+    );
 
   return (
     <AppShell title="Giao dịch & đối soát">
       <Section
         title="Giao dịch"
-        description={
-          t.canReconcile
-            ? "Tick các giao dịch đã khớp với cổng thanh toán rồi xác nhận đối soát. Giao dịch thuộc kỳ đã chốt không đối soát được."
-            : "Chỉ xem. Việc xác nhận đối soát do Kế toán thực hiện."
+        description="Mỗi lần tra cứu được ghi vào nhật ký thao tác."
+        action={
+          <span className="text-sm text-muted-foreground">
+            Tổng theo bộ lọc: <b className="text-foreground">{money(t.totalAmount)}</b>
+          </span>
         }
       >
-        <TransactionFilters filters={t.filters} onFiltersChange={t.setFilters} />
-        {t.canReconcile && t.reconcilable.length > 0 && (
-          <div className="mb-3 flex flex-wrap items-center gap-3 rounded-lg bg-muted p-3 text-sm">
-            <span>
-              Đã chọn <b>{t.pickedCount}</b> giao dịch · Tổng <b>{money(t.pickedAmount)}</b>
-            </span>
-            <Button size="sm" variant="outline" onClick={t.pickAll}>
-              Chọn tất cả ({t.reconcilable.length})
-            </Button>
-            <Button
-              size="sm"
-              className="ml-auto"
-              disabled={!t.pickedCount}
-              onClick={t.confirmReconcile}
-            >
-              Xác nhận đã đối soát
-            </Button>
-          </div>
+        <TransactionFilters
+          filters={t.filters}
+          badRange={t.badRange}
+          onFiltersChange={t.setFilters}
+        />
+        <LoadState loading={t.loading} error={t.loadError} onRetry={t.reload} />
+        {!t.loading && !t.loadError && !t.badRange && (
+          <>
+            <TransactionsTable rows={t.rows} onSelect={t.select} />
+            {t.pageInfo && (
+              <ServerPager
+                label="giao dịch"
+                page={t.page}
+                totalPages={t.pageInfo.totalPages}
+                totalElements={t.pageInfo.totalElements}
+                disabled={t.fetching}
+                onChange={t.setPage}
+              />
+            )}
+          </>
         )}
-        <TransactionsTable
-          rows={t.rows}
-          onSelect={t.selectTransaction}
-          selection={
-            t.canReconcile
-              ? { canPick: t.canPick, isPicked: t.isPicked, toggle: t.togglePick }
-              : undefined
-          }
+      </Section>
+      <Section
+        title="Chờ hoàn tiền"
+        description="Sau khi chuyển tiền cho khách, xác nhận để đóng giao dịch."
+      >
+        <LoadState error={t.refundsError} />
+        <DataTable
+          rows={t.refunds}
+          rowKey={(p) => p.id}
+          empty="Không có giao dịch chờ hoàn tiền"
+          cols={[
+            { h: "Thời gian", c: (p) => fmtInstant(p.createdAt) },
+            { h: "Dịch vụ", c: (p) => PAYMENT_PURPOSE_LABEL[p.purpose] },
+            { h: "Số tiền", c: (p) => money(p.amountVnd), className: "text-right" },
+            { h: "Phương thức", c: (p) => PAYMENT_METHOD_LABEL[p.method] },
+            {
+              h: "Thao tác",
+              className: "text-right",
+              c: (p) => (
+                <Button size="sm" disabled={!!t.pending} onClick={() => void t.confirmRefunded(p)}>
+                  Đã hoàn tiền
+                </Button>
+              ),
+            },
+          ]}
         />
       </Section>
+      <ReconciliationSection />
       <TransactionDetailSheet
-        transaction={t.selectedTransaction}
-        onClose={() => t.selectTransaction(null)}
+        transaction={t.selected}
+        canManage={t.canManage}
+        pending={!!t.pending}
+        onConfirmRefunded={(p) => void t.confirmRefunded(p)}
+        onClose={() => t.select(null)}
       />
     </AppShell>
   );

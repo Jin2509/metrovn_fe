@@ -1,11 +1,11 @@
+import type { PaymentPurpose, PaymentStatus } from "@/lib/api";
+
 export type TransactionFilters = {
+  /** Mã giao dịch của cổng thanh toán (tìm gần đúng). */
   q: string;
-  status: string;
-  method: string;
-  gateway: string;
-  rec: string;
+  status: PaymentStatus | "ALL";
+  purpose: PaymentPurpose | "ALL";
+  /** yyyy-MM-dd */
   from: string;
   to: string;
 };
-
-export type TransactionFilterKey = "status" | "method" | "gateway" | "rec";

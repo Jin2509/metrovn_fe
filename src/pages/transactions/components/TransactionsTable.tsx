@@ -1,61 +1,44 @@
-import { DataTable, money, StatusBadge, type Col } from "@/components/shared";
-import { Checkbox } from "@/components/ui/checkbox";
-import type { Txn } from "@/mocks/admin";
+import { DataTable, money, StatusBadge } from "@/components/shared";
+import type { PaymentView } from "@/lib/api";
+import { fmtInstant } from "@/lib/query-sync";
+import {
+  PAYMENT_METHOD_LABEL,
+  PAYMENT_PURPOSE_LABEL,
+  PAYMENT_STATUS_BADGE,
+  PAYMENT_STATUS_LABEL,
+} from "@/pages/transactions/transactions.constants";
 
 export function TransactionsTable({
   rows,
   onSelect,
-  selection,
 }: {
-  rows: Txn[];
-  onSelect: (transaction: Txn) => void;
-  /** Có giá trị khi vai trò được đối soát: thêm cột tick ở các dòng đối soát được. */
-  selection?: {
-    canPick: (transaction: Txn) => boolean;
-    isPicked: (id: string) => boolean;
-    toggle: (id: string) => void;
-  };
+  rows: PaymentView[];
+  onSelect: (transaction: PaymentView) => void;
 }) {
-  const pickCol: Col<Txn>[] = selection
-    ? [
-        {
-          h: "Chọn",
-          className: "w-14",
-          c: (transaction) =>
-            selection.canPick(transaction) && (
-              // Bấm vào dòng là mở chi tiết nên ô tick không được để sự kiện lan ra dòng.
-              <div onClick={(event) => event.stopPropagation()}>
-                <Checkbox
-                  aria-label={`Chọn đối soát ${transaction.id}`}
-                  checked={selection.isPicked(transaction.id)}
-                  onCheckedChange={() => selection.toggle(transaction.id)}
-                />
-              </div>
-            ),
-        },
-      ]
-    : [];
   return (
     <DataTable
       rows={rows}
+      rowKey={(t) => t.id}
+      rowActionLabel={(t) => `Xem giao dịch ${t.providerRef ?? t.id.slice(0, 8)}`}
       onRow={onSelect}
-      pageSize={12}
+      // Backend đã phân trang: hiện hết các dòng của trang này.
+      pageSize={Math.max(rows.length, 1)}
       cols={[
-        ...pickCol,
-        { h: "Mã GD", c: (transaction) => transaction.id },
-        { h: "Thời gian", c: (transaction) => transaction.at },
-        { h: "Dịch vụ", c: (transaction) => transaction.service },
+        { h: "Thời gian", c: (t) => fmtInstant(t.createdAt) },
+        { h: "Dịch vụ", c: (t) => PAYMENT_PURPOSE_LABEL[t.purpose] },
+        { h: "Số tiền", c: (t) => money(t.amountVnd), className: "text-right" },
+        { h: "Phương thức", c: (t) => PAYMENT_METHOD_LABEL[t.method] },
         {
-          h: "Số tiền",
-          c: (transaction) => money(transaction.amount),
-          className: "text-right",
+          h: "Mã cổng",
+          c: (t) => <span className="font-mono text-xs">{t.providerRef ?? "—"}</span>,
         },
-        { h: "Phương thức", c: (transaction) => `${transaction.method} · ${transaction.gateway}` },
-        { h: "Trạng thái", c: (transaction) => <StatusBadge s={transaction.status} /> },
         {
-          h: "Đối soát",
-          c: (transaction) => (
-            <StatusBadge s={transaction.reconciled ? "RECONCILED" : "UNRECONCILED"} />
+          h: "Trạng thái",
+          c: (t) => (
+            <StatusBadge
+              s={PAYMENT_STATUS_BADGE[t.status]}
+              label={PAYMENT_STATUS_LABEL[t.status]}
+            />
           ),
         },
       ]}

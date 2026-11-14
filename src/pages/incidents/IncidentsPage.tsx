@@ -1,8 +1,14 @@
-import { CircleAlert, Megaphone, Radio, Siren } from "lucide-react";
+import { CircleAlert, CircleCheck, Inbox, Siren } from "lucide-react";
 import { useMemo, useState } from "react";
-import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
-import { DataTable, ReasonDialog, Section, StatCard, StatusBadge } from "@/components/shared";
+import {
+  DataTable,
+  LoadState,
+  ReasonDialog,
+  Section,
+  StatCard,
+  StatusBadge,
+} from "@/components/shared";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
@@ -13,31 +19,26 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { stationName } from "@/lib/network";
-import { incidentsStore, type IncidentSeverity, type IncidentStatus } from "@/mocks/incidents";
-import { stationsStore } from "@/mocks/metro";
+import { incidentsStore, type IncidentSeverity } from "@/stores/incidents";
+import { stationsStore } from "@/stores/metro";
 import { IncidentDetailSheet } from "@/pages/incidents/components/IncidentDetailSheet";
+import { useIncidents } from "@/pages/incidents/hooks";
 import {
-  INCIDENT_LOCATION_LABEL,
   INCIDENT_SEVERITY_LABEL,
   INCIDENT_TYPE_LABEL,
 } from "@/pages/incidents/incidents.constants";
 import {
-  declinePublication,
   filterIncidents,
   incidentStats,
-  publishIncident,
+  isUrgent,
   sortIncidents,
-  updateIncidentStatus,
   type IncidentFilter,
 } from "@/pages/incidents/incidents.service";
 import { formatDateTime } from "@/pages/studentverification/components/format";
 
-const reportResult = (error: string | null, success: string) =>
-  error ? toast.error(error) : toast.success(success);
-
-/** Sự cố nhân viên ga báo từ app: Admin và Manager theo dõi, xử lý và quyết định báo hành khách. */
+/** Sự cố nhân viên ga báo từ app: Admin và Manager theo dõi và xử lý. */
 export function IncidentsPage() {
+  const data = useIncidents();
   const incidents = incidentsStore.use();
   const stations = stationsStore.use();
   const [filter, setFilter] = useState<IncidentFilter>({
@@ -47,7 +48,7 @@ export function IncidentsPage() {
     search: "",
   });
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [declining, setDeclining] = useState(false);
+  const [resolving, setResolving] = useState(false);
 
   const stats = incidentStats(incidents);
   const rows = useMemo(
@@ -56,6 +57,15 @@ export function IncidentsPage() {
   );
   const selected = incidents.find((incident) => incident.id === selectedId) ?? null;
   const edit = (patch: Partial<IncidentFilter>) => setFilter((f) => ({ ...f, ...patch }));
+
+  if (!data.canManage)
+    return (
+      <AppShell title="Sự cố tại ga">
+        <p className="text-sm text-muted-foreground">
+          Tài khoản chưa có quyền xử lý sự cố (INCIDENT_MANAGE).
+        </p>
+      </AppShell>
+    );
 
   return (
     <AppShell title="Sự cố tại ga">
@@ -67,31 +77,25 @@ export function IncidentsPage() {
           tone={stats.open ? "accent" : "muted"}
         />
         <StatCard
-          label="Khẩn cấp"
-          value={stats.emergency}
+          label="Chưa ai nhận"
+          value={stats.fresh}
+          icon={Inbox}
+          tone={stats.fresh ? "accent" : "muted"}
+        />
+        <StatCard
+          label="Mức cao / khẩn cấp"
+          value={stats.urgent}
           icon={Siren}
-          tone={stats.emergency ? "destructive" : "muted"}
+          tone={stats.urgent ? "destructive" : "muted"}
         />
-        <StatCard
-          label="Đề xuất chờ duyệt"
-          value={stats.pendingPublication}
-          hint="Nhân viên đề nghị báo hành khách"
-          icon={Megaphone}
-          tone={stats.pendingPublication ? "accent" : "muted"}
-        />
-        <StatCard
-          label="Đang hiện cho hành khách"
-          value={stats.published}
-          hint="Tự gỡ khi sự cố xử lý xong"
-          icon={Radio}
-          tone="muted"
-        />
+        <StatCard label="Đã xử lý" value={stats.resolved} icon={CircleCheck} tone="muted" />
       </div>
 
       <Section
         title="Danh sách sự cố"
-        description="Khẩn cấp xếp trước. App chỉ ghi nhận sự cố; nguy hiểm thực tế vẫn phải gọi cứu hộ, an ninh."
+        description="Mức nặng xếp trước. App chỉ ghi nhận sự cố; nguy hiểm thực tế vẫn phải gọi cứu hộ, an ninh."
       >
+        <LoadState loading={data.loading} error={data.loadError} onRetry={data.reload} />
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <Tabs
             value={filter.tab}
@@ -133,7 +137,7 @@ export function IncidentsPage() {
           </Select>
           <Input
             aria-label="Tìm sự cố"
-            placeholder="Tìm mã, mô tả, người báo"
+            placeholder="Tìm mã, mô tả, tên ga"
             className="w-full sm:w-64"
             value={filter.search}
             onChange={(event) => edit({ search: event.target.value })}
@@ -142,43 +146,29 @@ export function IncidentsPage() {
         <DataTable
           rows={rows}
           empty="Không có sự cố nào"
+          rowKey={(incident) => incident.id}
+          rowActionLabel={(incident) => `Xem sự cố ${incident.id}`}
           onRow={(incident) => setSelectedId(incident.id)}
           cols={[
-            { h: "Mã", c: (incident) => <b>{incident.id}</b> },
+            { h: "Mã", c: (incident) => <b>#{incident.id}</b> },
             {
               h: "Sự cố",
               c: (incident) => (
                 <>
                   <p className="font-medium">{INCIDENT_TYPE_LABEL[incident.type]}</p>
-                  <p className="text-xs text-muted-foreground">
-                    Ga {stationName(incident.stationId)} ·{" "}
-                    {INCIDENT_LOCATION_LABEL[incident.location]}
-                  </p>
+                  <p className="text-xs text-muted-foreground">Ga {incident.stationName}</p>
                 </>
               ),
             },
             {
               h: "Mức độ",
               c: (incident) => (
-                <Badge variant={incident.severity === "EMERGENCY" ? "destructive" : "secondary"}>
+                <Badge variant={isUrgent(incident) ? "destructive" : "secondary"}>
                   {INCIDENT_SEVERITY_LABEL[incident.severity]}
                 </Badge>
               ),
             },
             { h: "Trạng thái", c: (incident) => <StatusBadge s={incident.status} /> },
-            {
-              h: "Báo hành khách",
-              c: (incident) =>
-                incident.publication === "NONE" ? (
-                  "—"
-                ) : (
-                  <StatusBadge
-                    s={incident.publication}
-                    label={incident.publication === "PENDING" ? "Chờ duyệt" : "Đang hiện"}
-                  />
-                ),
-            },
-            { h: "Người báo", c: (incident) => incident.reporterName },
             {
               h: "Lúc báo",
               c: (incident) => (
@@ -191,25 +181,23 @@ export function IncidentsPage() {
 
       <IncidentDetailSheet
         incident={selected}
+        canManage={data.canManage}
+        canAnnounce={data.canAnnounce}
+        pending={data.pending}
         onClose={() => setSelectedId(null)}
-        onStatus={(status: IncidentStatus) =>
-          selected &&
-          reportResult(updateIncidentStatus(selected.id, status), "Đã cập nhật trạng thái")
-        }
-        onPublish={() =>
-          selected && reportResult(publishIncident(selected.id), "Đã đăng thông báo cho hành khách")
-        }
-        onDecline={() => setDeclining(true)}
+        onAccept={() => selected && void data.accept(selected)}
+        onResolve={() => setResolving(true)}
+        onAnnounce={() => selected && void data.announce(selected)}
       />
       <ReasonDialog
-        open={declining}
-        title="Không báo hành khách"
+        open={resolving}
+        title={selected ? `Đã xử lý sự cố #${selected.id}` : ""}
+        fieldLabel="Kết quả xử lý"
         confirmLabel="Xác nhận"
-        onClose={() => setDeclining(false)}
-        onConfirm={(reason) => {
-          if (selected) declinePublication(selected.id, reason);
-          toast.success("Đã ghi lại lý do");
-          setDeclining(false);
+        onClose={() => setResolving(false)}
+        onConfirm={(resolution) => {
+          if (!selected) return;
+          void data.resolve(selected, resolution).then((ok) => ok && setResolving(false));
         }}
       />
     </AppShell>

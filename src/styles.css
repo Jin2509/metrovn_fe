@@ -66,6 +66,8 @@
 }
 
 :root {
+  /* Trình duyệt tô thanh cuộn, ô nhập mặc định và nền canvas theo giao diện đang dùng. */
+  color-scheme: light;
   --radius: 0.75rem;
   --font-family-sans: "Be Vietnam Pro", system-ui, sans-serif;
   --shadow-card: 0 1px 2px oklch(0.22 0.04 250 / 0.04), 0 1px 3px oklch(0.22 0.04 250 / 0.06);
@@ -106,6 +108,7 @@
 }
 
 .dark {
+  color-scheme: dark;
   --shadow-card: 0 1px 2px oklch(0 0 0 / 0.3);
   --background: oklch(0.16 0.025 255);
   --foreground: oklch(0.96 0.005 240);
@@ -160,6 +163,65 @@
   * {
     scrollbar-width: thin;
     scrollbar-color: color-mix(in oklch, var(--color-muted-foreground) 35%, transparent) transparent;
+  }
+}
+
+/*
+ * Bảng dữ liệu (DataTable): khi chính khung bảng hẹp (điện thoại, cột nửa màn hình) thì mỗi dòng thành một
+ * thẻ, nhãn cột lấy từ data-label của ô. Dùng container query nên không phụ thuộc bề rộng màn hình.
+ * Bảng chỉ có 1–2 cột (.no-stack) vẫn đọc được khi hẹp nên giữ nguyên.
+ */
+.data-table-wrap {
+  container-type: inline-size;
+}
+
+@container (width < 30rem) {
+  .data-table:not(.no-stack) {
+    display: block;
+
+    & thead {
+      display: none;
+    }
+
+    & tbody,
+    & tr,
+    & td {
+      display: block;
+    }
+
+    & tbody tr {
+      border-block-end: 1px solid var(--color-border);
+      padding-block: 0.5rem;
+    }
+
+    & tbody tr:last-child {
+      border-block-end: 0;
+    }
+
+    & td {
+      display: grid;
+      grid-template-columns: minmax(6rem, 38%) minmax(0, 1fr);
+      gap: 0.75rem;
+      padding: 0.25rem 0.75rem;
+      text-align: start;
+      white-space: normal;
+    }
+
+    & td[data-label]::before {
+      content: attr(data-label);
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--color-muted-foreground);
+    }
+
+    /* Ô trống ("Không có dữ liệu") và nút mở dòng không có nhãn. */
+    & td:not([data-label]) {
+      display: block;
+    }
+
+    & td.row-action {
+      text-align: end;
+    }
   }
 }
 

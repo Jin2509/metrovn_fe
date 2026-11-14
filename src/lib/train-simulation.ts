@@ -1,6 +1,6 @@
 import { chainage } from "@/lib/network";
-import type { LineStation, Station } from "@/mocks/metro";
-import type { OperationConfig } from "@/mocks/operations";
+import type { LineStation, Station } from "@/stores/metro";
+import type { OperationConfig } from "@/stores/operations";
 
 // Mô phỏng vị trí tàu theo lịch (mục tiêu "theo dõi vị trí tàu được mô phỏng" của báo cáo).
 // Không phải GPS: vị trí suy ra từ cấu hình vận hành đang áp dụng (giờ chạy, giãn cách) và bảng

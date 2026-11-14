@@ -1,9 +1,20 @@
 import type { ProtectedPath } from "@/lib/auth";
-import { approvalLabel } from "@/mocks/admin";
-import type { WorkCategory, WorkPriority, WorkStatus } from "@/mocks/requests";
+import type { WorkCategory, WorkPriority, WorkStatus } from "@/stores/requests";
 
 export const WORK_CATEGORY_LABELS: Record<WorkCategory, string> = {
-  ...approvalLabel,
+  TICKET_TYPE: "Loại vé & giá vé",
+  PARKING_LOT: "Bãi xe",
+  PARKING_PRICE: "Giá gửi xe",
+  GREEN_POLICY: "Hành trình xanh",
+  OPERATION: "Cấu hình vận hành",
+  TRAIN: "Đoàn tàu",
+  ACCOUNT: "Tài khoản & nhân viên",
+  ASSIGNMENT: "Phân công ga",
+  STATION: "Nhà ga",
+  LINE: "Tuyến đường",
+  SCHOOL: "Xác nhận sinh viên",
+  SYSTEM_PARAM: "Tham số hệ thống",
+  ANNOUNCEMENT: "Thông báo vận hành",
   OTHER: "Khác (lỗi, báo cáo…)",
 };
 
@@ -23,6 +34,7 @@ export const WORK_CATEGORY_ROUTE: Partial<
   LINE: { to: "/stations" },
   SCHOOL: { to: "/student-verifications" },
   SYSTEM_PARAM: { to: "/system-params" },
+  ANNOUNCEMENT: { to: "/notifications" },
 };
 
 export const WORK_PRIORITY: Record<WorkPriority, { label: string; className: string }> = {

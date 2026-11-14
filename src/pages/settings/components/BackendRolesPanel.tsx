@@ -1,4 +1,6 @@
 import { AlertCircle, Plus } from "lucide-react";
+import { FieldError } from "@/components/form-field";
+import { fieldErrorProps, useFocusFirstInvalid } from "@/components/form-field.utils";
 import { DataTable, Section, type Col } from "@/components/shared";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +24,7 @@ const LOCKED_ROLE = "ADMIN";
 /** Vai trò và quyền đang áp dụng ở máy chủ: xem, tạo vai trò mới, đổi quyền của vai trò. */
 export function BackendRolesPanel() {
   const rbac = useRbac();
+  const { ref, focusFirstInvalid } = useFocusFirstInvalid<HTMLDivElement>();
   const cols: Col<RoleResponse>[] = [
     { h: "Mã", c: (role) => <span className="font-medium">{role.code}</span> },
     { h: "Tên", c: (role) => role.name },
@@ -64,8 +67,11 @@ export function BackendRolesPanel() {
         rows={rbac.roles}
         cols={cols}
         empty={rbac.loading ? "Đang tải dữ liệu…" : "Chưa có vai trò"}
+        rowKey={(role) => role.code}
+        rowActionLabel={(role) =>
+          role.code === LOCKED_ROLE ? null : `Đổi quyền vai trò ${role.code}`
+        }
         onRow={(role) =>
-          role.code !== LOCKED_ROLE &&
           rbac.open(false, { code: role.code, name: role.name, permissions: role.permissions })
         }
       />
@@ -77,7 +83,7 @@ export function BackendRolesPanel() {
             </DialogTitle>
           </DialogHeader>
           {editor && (
-            <div className="space-y-3">
+            <div ref={ref} className="space-y-3">
               {editor.isNew && (
                 <>
                   <div className="space-y-1.5">
@@ -89,10 +95,9 @@ export function BackendRolesPanel() {
                       onChange={(event) =>
                         rbac.setDraft({ ...editor.draft, code: event.target.value.toUpperCase() })
                       }
+                      {...fieldErrorProps("role-code", rbac.errors.code)}
                     />
-                    {rbac.errors.code && (
-                      <p className="text-xs text-destructive">{rbac.errors.code}</p>
-                    )}
+                    <FieldError fieldId="role-code">{rbac.errors.code}</FieldError>
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="role-name">Tên vai trò</Label>
@@ -102,14 +107,14 @@ export function BackendRolesPanel() {
                       onChange={(event) =>
                         rbac.setDraft({ ...editor.draft, name: event.target.value })
                       }
+                      {...fieldErrorProps("role-name", rbac.errors.name)}
                     />
-                    {rbac.errors.name && (
-                      <p className="text-xs text-destructive">{rbac.errors.name}</p>
-                    )}
+                    <FieldError fieldId="role-name">{rbac.errors.name}</FieldError>
                   </div>
                 </>
               )}
-              <div className="max-h-64 space-y-2 overflow-y-auto">
+              <fieldset className="max-h-64 space-y-2 overflow-y-auto">
+                <legend className="sr-only">Quyền của vai trò</legend>
                 {rbac.permissions.map((permission) => (
                   <div key={permission.code} className="flex items-start gap-2">
                     <Checkbox
@@ -125,7 +130,7 @@ export function BackendRolesPanel() {
                     </Label>
                   </div>
                 ))}
-              </div>
+              </fieldset>
               {!editor.isNew && (
                 <p className="text-xs text-muted-foreground">
                   Danh sách này thay thế toàn bộ quyền hiện có và có hiệu lực ngay.
@@ -137,7 +142,13 @@ export function BackendRolesPanel() {
             <Button variant="outline" onClick={rbac.close}>
               Hủy
             </Button>
-            <Button disabled={rbac.pending} onClick={rbac.submit}>
+            <Button
+              disabled={rbac.pending}
+              onClick={() => {
+                rbac.submit();
+                focusFirstInvalid();
+              }}
+            >
               Lưu
             </Button>
           </DialogFooter>

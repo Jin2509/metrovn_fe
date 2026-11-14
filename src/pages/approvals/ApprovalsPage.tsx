@@ -1,7 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import { ClipboardList, FileCheck2, Inbox, Plus, Send } from "lucide-react";
 import { AppShell, PageTabs, type PageTab } from "@/components/app-shell";
-import { ReasonDialog } from "@/components/shared";
+import { LoadState, ReasonDialog } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { useAuth, type Role } from "@/lib/auth";
 import { PoliciesPanel } from "@/pages/policies";
@@ -51,18 +51,23 @@ function ApprovalInboxPanel({ role }: { role: "MANAGER" | "ADMIN" }) {
     setSelected,
     rejectOpen,
     setRejectOpen,
+    pending,
     decide,
+    loading,
+    loadError,
+    canDecide,
   } = useApprovals(manager ? "PENDING" : "ALL");
 
   return (
     <>
+      <LoadState loading={loading} error={loadError} />
       <ApprovalTypeTabs value={tab} onValueChange={setTab} />
       <ApprovalListSection
         title={manager ? "Đề xuất chờ bạn duyệt" : "Đề xuất đã gửi Manager"}
         description={
           manager
-            ? "Thay đổi dữ liệu do Admin đề xuất. Dữ liệu chỉ được ghi khi bạn phê duyệt."
-            : "Theo dõi kết quả duyệt. Có thể trao đổi thêm với Manager khi đề xuất còn chờ."
+            ? "Cấu hình vận hành, giá vé và thông báo do Admin gửi. Chỉ có hiệu lực khi bạn phê duyệt."
+            : "Theo dõi kết quả duyệt cấu hình vận hành, giá vé và thông báo đã gửi Manager."
         }
         rows={rows}
         status={status}
@@ -71,8 +76,10 @@ function ApprovalInboxPanel({ role }: { role: "MANAGER" | "ADMIN" }) {
       />
       <ApprovalDetailSheet
         approval={selected}
+        canDecide={selected ? canDecide[selected.type] : false}
+        pending={pending}
         onClose={() => setSelected(null)}
-        onApprove={() => decide("APPROVED")}
+        onApprove={() => void decide("APPROVED")}
         onReject={() => setRejectOpen(true)}
         onOpenWorkRequest={openRequest}
       />
@@ -81,7 +88,7 @@ function ApprovalInboxPanel({ role }: { role: "MANAGER" | "ADMIN" }) {
         title="Từ chối yêu cầu"
         confirmLabel="Từ chối"
         onClose={() => setRejectOpen(false)}
-        onConfirm={(reason) => decide("REJECTED", reason)}
+        onConfirm={(reason) => void decide("REJECTED", reason)}
       />
     </>
   );

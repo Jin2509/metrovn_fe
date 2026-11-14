@@ -25,11 +25,15 @@ const NUM_FIELDS: [NumKey, string][] = [
 
 export function ConfigEditorDialog({
   editor,
+  lineLabel,
+  pending,
   onChange,
   onClose,
   onSave,
 }: {
   editor: { id?: string; draft: ConfigDraft } | null;
+  lineLabel: string;
+  pending: boolean;
   onChange: (draft: ConfigDraft) => void;
   onClose: () => void;
   onSave: () => void;
@@ -45,9 +49,11 @@ export function ConfigEditorDialog({
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>
-            {editor.id ? "Sửa bản nháp" : "Cấu hình vận hành mới"} · Tuyến 1
+            {editor.id ? "Sửa cấu hình" : "Cấu hình vận hành mới"} · {lineLabel}
           </DialogTitle>
-          <DialogDescription>Lưu thành bản nháp, sau đó gửi Manager duyệt.</DialogDescription>
+          <DialogDescription>
+            Lưu thành bản nháp, sau đó gửi Manager duyệt. Sửa bản đã duyệt sẽ tạo bản nháp mới.
+          </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 sm:grid-cols-2">
           {NUM_FIELDS.map(([key, label]) => (
@@ -115,9 +121,9 @@ export function ConfigEditorDialog({
           >
             <p className="flex items-center gap-2 font-medium">
               {a.capacity.length ? (
-                <AlertTriangle className="h-4 w-4 text-destructive" />
+                <AlertTriangle className="h-4 w-4 text-destructive" aria-hidden />
               ) : (
-                <CheckCircle2 className="h-4 w-4 text-success" />
+                <CheckCircle2 className="h-4 w-4 text-success" aria-hidden />
               )}
               Cần tối thiểu {a.need.trains} đoàn tàu · khai báo {d.numberOfTrains} · tuyến có{" "}
               {availableTrains(d.lineId)} đoàn sẵn sàng
@@ -140,7 +146,7 @@ export function ConfigEditorDialog({
           </div>
         )}
         {a.errors.length > 0 && (
-          <ul className="list-disc pl-5 text-sm text-destructive">
+          <ul role="alert" className="list-disc pl-5 text-sm text-destructive">
             {a.errors.map((e) => (
               <li key={e}>{e}</li>
             ))}
@@ -150,7 +156,9 @@ export function ConfigEditorDialog({
           <Button variant="outline" onClick={onClose}>
             Hủy
           </Button>
-          <Button onClick={onSave}>Lưu nháp</Button>
+          <Button onClick={onSave} disabled={pending}>
+            {pending ? "Đang lưu…" : "Lưu nháp"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

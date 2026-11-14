@@ -5,8 +5,10 @@ import type {
   AuditLog,
   AuditLogQuery,
   Page,
+  PageQuery,
   PermissionResponse,
   RoleResponse,
+  UserAuthEvent,
   UserListQuery,
 } from "./types";
 
@@ -31,6 +33,9 @@ export const adminUsersApi = {
     apiRequest<AdminUser>(usersPath(id, "status"), { method: "PATCH", body: { status } }),
   resetPassword: (id: string, newPassword: string) =>
     apiRequest(usersPath(id, "password"), { method: "PUT", body: { newPassword } }),
+  /** Lịch sử bảo mật của một tài khoản, mới nhất trước. */
+  authEvents: (id: string, query: PageQuery = {}) =>
+    apiRequest<Page<UserAuthEvent>>(usersPath(id, "auth-events"), { query }),
 };
 
 // /api/admin/auth-events: cần USER_VIEW. Luôn mới nhất trước.

@@ -1,14 +1,14 @@
-import type { Announcement } from "@/mocks/announcements";
+import type { Announcement } from "@/stores/announcements";
 
 export type AnnouncementDraft = Pick<
   Announcement,
-  "title" | "content" | "severity" | "audience" | "channels" | "lineId" | "stationId"
+  "title" | "content" | "severity" | "scope" | "lineId" | "stationId" | "targetRole"
 > & {
-  /** Dạng `YYYY-MM-DDTHH:mm` của ô datetime-local. */
+  /** Dạng `YYYY-MM-DDTHH:mm` của ô datetime-local, theo giờ máy. */
   startsAt: string;
   endsAt: string;
 };
 
 export type DraftErrors = Partial<
-  Record<"title" | "content" | "channels" | "period" | "recipients", string>
+  Record<"title" | "content" | "line" | "station" | "role" | "period", string>
 >;

@@ -1,4 +1,4 @@
-import { DataTable, Section, StatusBadge } from "@/components/shared";
+import { DataTable, LoadState, ReasonDialog, Section, StatusBadge } from "@/components/shared";
 import {
   Select,
   SelectContent,
@@ -6,10 +6,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { AnnouncementAudience } from "@/mocks/announcements";
+import { fmtInstant } from "@/lib/query-sync";
+import type { AnnouncementScope } from "@/stores/announcements";
 import {
-  AUDIENCE_LABELS,
   PHASE_LABELS,
+  SCOPE_LABELS,
   SEVERITY_LABELS,
   type AnnouncementPhase,
 } from "@/pages/notifications/notifications.constants";
@@ -22,11 +23,12 @@ export function History({ onEditDraft }: { onEditDraft: () => void }) {
   return (
     <Section
       title="Lịch sử thông báo"
-      description={`${h.counts.active} đang hiệu lực · ${h.counts.scheduled} sắp hiệu lực · ${h.counts.draft} nháp${h.counts.failed ? ` · ${h.counts.failed} lượt gửi lỗi cần xử lý` : ""}`}
+      description={`${h.counts.active} đang hiệu lực · ${h.counts.scheduled} sắp hiệu lực · ${h.counts.pending} chờ duyệt · ${h.counts.draft} nháp`}
     >
+      <LoadState loading={h.loading} error={h.loadError} onRetry={h.reload} />
       <div className="mb-3 flex flex-wrap gap-2">
         <Select value={h.phase} onValueChange={(v) => h.setPhase(v as "ALL" | AnnouncementPhase)}>
-          <SelectTrigger className="w-44">
+          <SelectTrigger className="w-44" aria-label="Lọc theo trạng thái">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -38,18 +40,15 @@ export function History({ onEditDraft }: { onEditDraft: () => void }) {
             ))}
           </SelectContent>
         </Select>
-        <Select
-          value={h.audience}
-          onValueChange={(v) => h.setAudience(v as "ALL" | AnnouncementAudience)}
-        >
-          <SelectTrigger className="w-44">
+        <Select value={h.scope} onValueChange={(v) => h.setScope(v as "ALL" | AnnouncementScope)}>
+          <SelectTrigger className="w-44" aria-label="Lọc theo phạm vi">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="ALL">Mọi nhóm nhận</SelectItem>
-            {(Object.keys(AUDIENCE_LABELS) as AnnouncementAudience[]).map((a) => (
-              <SelectItem key={a} value={a}>
-                {AUDIENCE_LABELS[a]}
+            <SelectItem value="ALL">Mọi phạm vi</SelectItem>
+            {(Object.keys(SCOPE_LABELS) as AnnouncementScope[]).map((s) => (
+              <SelectItem key={s} value={s}>
+                {SCOPE_LABELS[s]}
               </SelectItem>
             ))}
           </SelectContent>
@@ -57,6 +56,8 @@ export function History({ onEditDraft }: { onEditDraft: () => void }) {
       </div>
       <DataTable
         rows={h.rows}
+        rowKey={(a) => a.id}
+        rowActionLabel={(a) => `Xem thông báo ${a.title}`}
         onRow={(a) => h.select(a.id)}
         empty="Chưa có thông báo"
         cols={[
@@ -66,42 +67,20 @@ export function History({ onEditDraft }: { onEditDraft: () => void }) {
             c: (a) => (
               <div>
                 <p className="font-medium">{a.title}</p>
-                <p className="text-xs text-muted-foreground">
-                  {SEVERITY_LABELS[a.severity]} · {scopeLabel(a)}
-                </p>
+                <p className="text-xs text-muted-foreground">{SEVERITY_LABELS[a.severity]}</p>
               </div>
             ),
           },
-          { h: "Nhóm nhận", c: (a) => AUDIENCE_LABELS[a.audience] },
+          { h: "Phạm vi", c: (a) => scopeLabel(a) },
           {
             h: "Hiệu lực",
             c: (a) => (
               <span className="whitespace-nowrap text-xs">
-                {a.startsAt}
+                {fmtInstant(a.startsAt)}
                 <br />
-                {a.endsAt ? `→ ${a.endsAt}` : "→ không thời hạn"}
+                {a.endsAt ? `→ ${fmtInstant(a.endsAt)}` : "→ không thời hạn"}
               </span>
             ),
-          },
-          {
-            h: "Kết quả gửi",
-            c: (a) =>
-              a.delivery ? (
-                <span className={a.delivery.failed ? "text-destructive" : ""}>
-                  {a.delivery.sent}/{a.delivery.recipients}
-                  {a.delivery.failed ? ` · ${a.delivery.failed} lỗi` : ""}
-                </span>
-              ) : (
-                "—"
-              ),
-          },
-          {
-            h: "Đã đọc",
-            className: "text-right",
-            c: (a) =>
-              a.delivery && a.channels.includes("IN_APP")
-                ? `${a.delivery.read}/${a.delivery.sent}`
-                : "—",
           },
           {
             h: "Trạng thái",
@@ -113,10 +92,21 @@ export function History({ onEditDraft }: { onEditDraft: () => void }) {
       />
       <DetailSheet
         item={h.selected}
+        canManage={h.canManage}
+        canApprove={h.canApprove}
+        pending={h.pending}
         onClose={() => h.select(null)}
-        onResend={h.resend}
-        onEnd={h.end}
         onEditDraft={h.editDraft}
+        onSubmit={(id) => void h.submit(id)}
+        onApprove={(id) => void h.approve(id)}
+        onReject={() => h.setRejecting(true)}
+      />
+      <ReasonDialog
+        open={h.rejecting}
+        title={h.selected ? `Từ chối thông báo: ${h.selected.title}` : ""}
+        confirmLabel="Từ chối"
+        onClose={() => h.setRejecting(false)}
+        onConfirm={(reason) => void h.reject(reason)}
       />
     </Section>
   );

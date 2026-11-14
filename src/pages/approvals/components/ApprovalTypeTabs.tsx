@@ -5,7 +5,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { approvalLabel, type ApprovalType } from "@/mocks/admin";
+import { approvalLabel, type ApprovalType } from "@/stores/admin";
 import type { ApprovalTypeTab } from "@/pages/approvals/approvals.types";
 
 /** Lọc theo loại yêu cầu. Danh sách loại dài nên dùng ô chọn thay cho hàng tab. */

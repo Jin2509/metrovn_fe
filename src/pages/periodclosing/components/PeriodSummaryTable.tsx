@@ -13,18 +13,21 @@ export function PeriodSummaryTable({
   return (
     <Section title="Tổng hợp theo tháng">
       <p className="mb-3 text-sm text-muted-foreground">
-        Sau khi chốt, giao dịch trong kỳ không thể đối soát lại.
+        Doanh thu theo báo cáo backend. Chốt kỳ hiện chỉ lưu trên trình duyệt này.
       </p>
       <DataTable
         rows={periods}
         cols={[
           { h: "Kỳ", c: (period) => <b>{period.month}</b> },
-          { h: "Doanh thu", c: (period) => money(period.revenue) },
-          { h: "Hoàn tiền", c: (period) => money(period.refund) },
-          { h: "Giảm giá", c: (period) => money(period.promo) },
           {
-            h: "Thuần",
-            c: (period) => <b>{money(period.revenue - period.refund - period.promo)}</b>,
+            h: "Doanh thu",
+            className: "text-right",
+            c: (period) => <b>{money(period.revenue)}</b>,
+          },
+          {
+            h: "Số giao dịch",
+            className: "text-right",
+            c: (period) => period.transactions.toLocaleString("vi-VN"),
           },
           {
             h: "Trạng thái",

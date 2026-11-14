@@ -2,31 +2,40 @@ import { Link2 } from "lucide-react";
 import { StatusBadge } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { useUserNames } from "@/hooks/use-user-names";
 import { useAuth } from "@/lib/auth";
-import { approvalLabel, type Approval } from "@/mocks/admin";
-import { workRequestsStore } from "@/mocks/requests";
+import { fmtInstant } from "@/lib/query-sync";
+import { approvalLabel, type Approval } from "@/stores/admin";
+import { workRequestsStore } from "@/stores/requests";
 import { ApprovalChangesTable } from "@/pages/approvals/components/ApprovalChangesTable";
 import { RequestThread } from "@/pages/approvals/components/RequestThread";
 
 export function ApprovalDetailSheet({
   approval,
+  canDecide: allowed,
+  pending,
   onClose,
   onApprove,
   onReject,
   onOpenWorkRequest,
 }: {
   approval: Approval | null;
+  /** Có quyền duyệt loại mục này trên backend. */
+  canDecide: boolean;
+  pending: boolean;
   onClose: () => void;
   onApprove: () => void;
   onReject: () => void;
   onOpenWorkRequest: (id: string) => void;
 }) {
-  const { can, user } = useAuth();
+  const { user } = useAuth();
+  const nameOf = useUserNames();
   const workRequest = workRequestsStore
     .use()
     .find((request) => request.id === approval?.workRequestId);
-  const ownProposal = !!approval && approval.by === user?.name;
-  const canDecide = can("approval.decide") && !ownProposal;
+  // Tách người đề xuất và người duyệt: không tự duyệt mục do chính mình gửi.
+  const ownProposal = !!approval && !!user && approval.by === user.id;
+  const canDecide = allowed && !ownProposal;
 
   return (
     <Sheet open={!!approval} onOpenChange={(open) => !open && onClose()}>
@@ -38,7 +47,8 @@ export function ApprovalDetailSheet({
             </SheetHeader>
             <div className="space-y-4 py-4 text-sm">
               <p className="text-muted-foreground">
-                {approvalLabel[approval.type]} · gửi bởi {approval.by} lúc {approval.at}
+                {approvalLabel[approval.type]} · gửi bởi {nameOf(approval.by)} lúc{" "}
+                {fmtInstant(approval.at)}
               </p>
               {workRequest && (
                 <button
@@ -56,8 +66,8 @@ export function ApprovalDetailSheet({
               <ApprovalChangesTable changes={approval.changes} />
               <div className="flex items-center gap-2">
                 <StatusBadge s={approval.status} />
-                {approval.decidedBy && (
-                  <span className="text-muted-foreground">bởi {approval.decidedBy}</span>
+                {approval.decidedBy && approval.status === "APPROVED" && (
+                  <span className="text-muted-foreground">bởi {nameOf(approval.decidedBy)}</span>
                 )}
               </div>
               {approval.reason && (
@@ -65,8 +75,10 @@ export function ApprovalDetailSheet({
               )}
               {approval.status === "PENDING" && canDecide && (
                 <div className="flex gap-2">
-                  <Button onClick={onApprove}>Phê duyệt</Button>
-                  <Button variant="destructive" onClick={onReject}>
+                  <Button disabled={pending} onClick={onApprove}>
+                    Phê duyệt
+                  </Button>
+                  <Button variant="destructive" disabled={pending} onClick={onReject}>
                     Từ chối
                   </Button>
                 </div>
@@ -80,7 +92,7 @@ export function ApprovalDetailSheet({
                 requestId={approval.id}
                 canPost={approval.status === "PENDING"}
                 placeholder={
-                  can("approval.decide")
+                  allowed
                     ? "Hỏi lại Admin trước khi quyết định…"
                     : "Giải thích hoặc bổ sung cho Manager…"
                 }

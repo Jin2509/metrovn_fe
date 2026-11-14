@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { chatbotFaqsApi, type ChatFaqResponse } from "@/lib/api";
 
-import { faqStore, messagesStore, sessionsStore, type ChatbotMessage } from "@/mocks/chatbot";
-import { saveFaq, validateFaq, normalizeKeywords } from "@/pages/chatbot/chatbot.service";
+import { faqStore, messagesStore, sessionsStore, type ChatbotMessage } from "@/stores/chatbot";
+import { normalizeKeywords, saveFaq, toFaq, validateFaq } from "@/pages/chatbot/chatbot.service";
 import {
   computeStats,
   dislikedReplies,
@@ -97,30 +98,44 @@ describe("kho tri thức", () => {
           question: all[0].question.toUpperCase(),
           answer: "x",
           keywords: "",
-          active: true,
         },
         all,
       ).question,
     ).toBe("Câu hỏi đã có trong kho tri thức");
-    expect(
-      validateFaq({ category: "OTHER", question: "", answer: "", keywords: "", active: true }, all),
-    ).toEqual({
-      question: "Thông tin đang bị thiếu",
-      answer: "Thông tin đang bị thiếu",
-    });
+    expect(validateFaq({ category: "OTHER", question: "", answer: "", keywords: "" }, all)).toEqual(
+      {
+        question: "Thông tin đang bị thiếu",
+        answer: "Thông tin đang bị thiếu",
+      },
+    );
     expect(normalizeKeywords(" Vé, vé ,QR,, qr")).toBe("vé, qr");
   });
 
-  it("thêm FAQ ở trạng thái tắt", () => {
-    const before = faqStore.get();
-    saveFaq({
+  it("lưu FAQ gửi câu hỏi đã cắt khoảng trắng và từ khóa đã chuẩn hóa; sửa thì PUT theo mã", async () => {
+    const saved = {} as ChatFaqResponse;
+    const create = vi.spyOn(chatbotFaqsApi, "create").mockResolvedValue(saved);
+    const update = vi.spyOn(chatbotFaqsApi, "update").mockResolvedValue(saved);
+    const draft = {
+      category: "GUIDE" as const,
+      question: "  Có wifi trên tàu không? ",
+      answer: "Chưa có.",
+      keywords: "WiFi, wifi, mạng",
+    };
+    await saveFaq(draft);
+    expect(create).toHaveBeenCalledWith({
       category: "GUIDE",
       question: "Có wifi trên tàu không?",
       answer: "Chưa có.",
-      keywords: "wifi",
-      active: false,
+      keywords: "wifi, mạng",
     });
-    expect(faqStore.get()[0]).toMatchObject({ status: "INACTIVE", category: "GUIDE" });
-    faqStore.set(() => before);
+    await saveFaq(draft, "12");
+    expect(update).toHaveBeenCalledWith(12, expect.objectContaining({ category: "GUIDE" }));
+    vi.restoreAllMocks();
+  });
+
+  it("danh mục lạ từ backend xếp vào Khác", () => {
+    expect(
+      toFaq({ id: 1, category: "XYZ", question: "q", answer: "a", keywords: null, updatedAt: "t" }),
+    ).toMatchObject({ id: "1", category: "OTHER", keywords: "" });
   });
 });

@@ -3,7 +3,7 @@ import {
   type ChatChannel,
   type ChatbotMessage,
   type ChatbotSession,
-} from "@/mocks/chatbot";
+} from "@/stores/chatbot";
 import { INTENT_INFO, RESPONSE_LIMIT_MS } from "@/pages/chatbot/chatbot.constants";
 
 // Thống kê chatbot. Mỗi số đều đếm trực tiếp từ bảng chatbot_session / chatbot_message:

@@ -19,6 +19,8 @@ export type ApiRequest = {
   auth?: boolean;
   /** Dùng token này thay cho token của phiên (`auth` phải là false). */
   token?: string;
+  /** `blob`: trả về nội dung nhị phân (xuất Excel/PDF, ảnh). Mặc định đọc JSON. */
+  responseType?: "json" | "blob";
 };
 
 function buildUrl(path: string, query?: Record<string, QueryValue>) {
@@ -38,13 +40,20 @@ function logCall(request: ApiRequest, path: string, result: number | string) {
 // Chỉ được thêm `Authorization` và `Content-Type`, header khác bị trình duyệt chặn.
 async function send(path: string, request: ApiRequest, token?: string) {
   const headers: Record<string, string> = {};
-  if (request.body !== undefined) headers["Content-Type"] = "application/json";
+  // FormData (multipart): để trình duyệt tự đặt Content-Type kèm boundary.
+  const isForm = typeof FormData !== "undefined" && request.body instanceof FormData;
+  if (request.body !== undefined && !isForm) headers["Content-Type"] = "application/json";
   if (token) headers.Authorization = `Bearer ${token}`;
   try {
     const response = await fetch(buildUrl(path, request.query), {
       method: request.method ?? "GET",
       headers,
-      body: request.body === undefined ? undefined : JSON.stringify(request.body),
+      body:
+        request.body === undefined
+          ? undefined
+          : isForm
+            ? (request.body as FormData)
+            : JSON.stringify(request.body),
     });
     logCall(request, path, response.status);
     return response;
@@ -141,5 +150,6 @@ export async function apiRequest<T = void>(path: string, request: ApiRequest = {
     if (useSession && response.status === 403) onAccessChanged?.();
     throw await toApiError(response);
   }
+  if (request.responseType === "blob") return (await response.blob()) as T;
   return (await readJson(response)) as T;
 }

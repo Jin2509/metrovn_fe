@@ -1,3 +1,5 @@
+import { FieldError } from "@/components/form-field";
+import { fieldErrorProps, useFocusFirstInvalid } from "@/components/form-field.utils";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -37,11 +39,21 @@ export function LineFormDialog({
   onClose: () => void;
   onSubmit: () => void;
 }) {
+  const { ref, focusFirstInvalid } = useFocusFirstInvalid<HTMLDivElement>();
   if (!form) return null;
   const d = form.draft;
   const set = (patch: Partial<LineDraft>) => onChange({ ...d, ...patch });
-  const error = (key: keyof LineDraft) =>
-    errors[key] && <p className="text-xs text-destructive">{errors[key]}</p>;
+  const fieldIds: Record<keyof LineDraft, string> = {
+    code: "line-code",
+    name: "line-name",
+    colorHex: "line-color",
+    description: "line-desc",
+    status: "line-status",
+  };
+  const error = (key: keyof LineDraft) => (
+    <FieldError fieldId={fieldIds[key]}>{errors[key]}</FieldError>
+  );
+  const a11y = (key: keyof LineDraft) => fieldErrorProps(fieldIds[key], errors[key]);
 
   return (
     <Dialog open onOpenChange={(o) => !o && !pending && onClose()}>
@@ -52,7 +64,7 @@ export function LineFormDialog({
             Sau khi tạo tuyến, thêm lần lượt từng ga ở bảng "Thứ tự ga".
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div ref={ref} className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label htmlFor="line-code">Mã tuyến</Label>
             <Input
@@ -60,13 +72,15 @@ export function LineFormDialog({
               maxLength={20}
               value={d.code}
               onChange={(e) => set({ code: e.target.value.toUpperCase() })}
+              required
+              {...a11y("code")}
             />
             {error("code")}
           </div>
           <div className="space-y-1.5">
-            <Label>Trạng thái</Label>
+            <Label htmlFor="line-status">Trạng thái</Label>
             <Select value={d.status} onValueChange={(v) => set({ status: v as LineStatus })}>
-              <SelectTrigger>
+              <SelectTrigger id="line-status">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -85,6 +99,8 @@ export function LineFormDialog({
               maxLength={100}
               value={d.name}
               onChange={(e) => set({ name: e.target.value })}
+              required
+              {...a11y("name")}
             />
             {error("name")}
           </div>
@@ -93,7 +109,7 @@ export function LineFormDialog({
             <div className="flex items-center gap-2">
               <input
                 type="color"
-                aria-label="Chọn màu"
+                aria-label="Chọn màu tuyến"
                 className="h-9 w-12 cursor-pointer rounded border bg-transparent"
                 value={HEX.test(d.colorHex) ? d.colorHex : "#000000"}
                 onChange={(e) => set({ colorHex: e.target.value.toUpperCase() })}
@@ -103,6 +119,7 @@ export function LineFormDialog({
                 placeholder="#RRGGBB (bỏ trống nếu chưa có)"
                 value={d.colorHex}
                 onChange={(e) => set({ colorHex: e.target.value })}
+                {...a11y("colorHex")}
               />
             </div>
             {error("colorHex")}
@@ -113,6 +130,7 @@ export function LineFormDialog({
               id="line-desc"
               value={d.description}
               onChange={(e) => set({ description: e.target.value })}
+              {...a11y("description")}
             />
             {error("description")}
           </div>
@@ -121,7 +139,13 @@ export function LineFormDialog({
           <Button variant="outline" disabled={pending} onClick={onClose}>
             Huỷ
           </Button>
-          <Button disabled={pending} onClick={onSubmit}>
+          <Button
+            disabled={pending}
+            onClick={() => {
+              onSubmit();
+              focusFirstInvalid();
+            }}
+          >
             {pending ? "Đang lưu…" : form.id ? "Lưu thay đổi" : "Tạo tuyến"}
           </Button>
         </DialogFooter>

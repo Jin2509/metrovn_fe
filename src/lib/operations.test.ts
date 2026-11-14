@@ -1,11 +1,12 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { operationConfigsApi, type OperationConfigResponse } from "@/lib/api";
 import { availableTrains, checkOperationConfig, minTrainsNeeded } from "@/lib/operations";
-import { operationConfigsStore, trainsStore } from "@/mocks/operations";
-import { applyOperationDecision, newDraftFrom } from "@/pages/trains/trains.service";
+import { toOperationConfig } from "@/lib/operations.queries";
+import { trainsStore } from "@/stores/operations";
+import { newDraftFrom, saveConfigDraft } from "@/pages/trains/trains.service";
 
-const configs = operationConfigsStore.get();
-afterEach(() => operationConfigsStore.set(() => configs));
+afterEach(() => vi.restoreAllMocks());
 
 const base = {
   lineId: "L1",
@@ -49,41 +50,52 @@ describe("checkOperationConfig", () => {
   });
 
   it("bản nháp mặc định lấy thời gian chạy từ bảng tuyến – ga", () => {
-    expect(newDraftFrom(undefined).runningTimeMinutes).toBeGreaterThan(25);
+    expect(newDraftFrom(undefined, "L1").runningTimeMinutes).toBeGreaterThan(25);
   });
 });
 
-describe("Manager duyệt cấu hình vận hành", () => {
-  it("duyệt cấu hình có ngày hiệu lực trong tương lai thì chuyển APPROVED, cấu hình cũ giữ ACTIVE", () => {
-    operationConfigsStore.set((l) =>
-      l.map((c) => (c.id === "C4" ? { ...c, status: "PENDING_APPROVAL" } : c)),
-    );
-    applyOperationDecision(true, "Trần Thị Bình");
-    const list = operationConfigsStore.get();
-    expect(list.find((c) => c.id === "C4")).toMatchObject({
-      status: "APPROVED",
-      approvedBy: "Trần Thị Bình",
+const apiConfig: OperationConfigResponse = {
+  id: 7,
+  lineId: 2,
+  version: 3,
+  numberOfTrains: 12,
+  headwayMinutes: 6,
+  runningTimeMinutes: 33,
+  turnaroundTimeMinutes: null,
+  startTime: "05:00:00",
+  endTime: "22:30:00",
+  effectiveFrom: "2026-12-01",
+  effectiveTo: null,
+  status: "PENDING_APPROVAL",
+  createdBy: "u-1",
+  submittedAt: "2026-11-10T02:00:00Z",
+  approvedBy: null,
+  approvedAt: null,
+  rejectionReason: null,
+  createdAt: "2026-11-09T02:00:00Z",
+  updatedAt: "2026-11-10T02:00:00Z",
+};
+
+describe("cấu hình vận hành từ backend", () => {
+  it("đổi giờ HH:mm:ss về HH:mm, mã số về chuỗi, thiếu thời gian quay đầu thì 0", () => {
+    expect(toOperationConfig(apiConfig)).toMatchObject({
+      id: "7",
+      lineId: "2",
+      startTime: "05:00",
+      endTime: "22:30",
+      turnaroundTimeMinutes: 0,
+      effectiveTo: undefined,
+      status: "PENDING_APPROVAL",
     });
-    expect(list.find((c) => c.id === "C3")?.status).toBe("ACTIVE");
   });
 
-  it("duyệt cấu hình đã đến ngày thì áp dụng ngay và đóng cấu hình cũ", () => {
-    operationConfigsStore.set((l) =>
-      l.map((c) =>
-        c.id === "C4" ? { ...c, status: "PENDING_APPROVAL", effectiveFrom: "2020-01-01" } : c,
-      ),
-    );
-    applyOperationDecision(true, "Trần Thị Bình");
-    const list = operationConfigsStore.get();
-    expect(list.find((c) => c.id === "C4")?.status).toBe("ACTIVE");
-    expect(list.find((c) => c.id === "C3")?.status).toBe("INACTIVE");
-  });
-
-  it("từ chối thì trả về nháp", () => {
-    operationConfigsStore.set((l) =>
-      l.map((c) => (c.id === "C4" ? { ...c, status: "PENDING_APPROVAL" } : c)),
-    );
-    applyOperationDecision(false, "Trần Thị Bình");
-    expect(operationConfigsStore.get().find((c) => c.id === "C4")?.status).toBe("DRAFT");
+  it("lưu nháp mới gọi POST theo tuyến; sửa thì PUT, bỏ ngày kết thúc thì gửi clearEffectiveTo", async () => {
+    const create = vi.spyOn(operationConfigsApi, "create").mockResolvedValue(apiConfig);
+    const update = vi.spyOn(operationConfigsApi, "update").mockResolvedValue(apiConfig);
+    const draft = { ...base, lineId: "2" };
+    await saveConfigDraft(draft);
+    expect(create).toHaveBeenCalledWith(2, expect.objectContaining({ numberOfTrains: 13 }));
+    await saveConfigDraft(draft, "7");
+    expect(update).toHaveBeenCalledWith(7, expect.objectContaining({ clearEffectiveTo: true }));
   });
 });

@@ -1,4 +1,4 @@
-import type { ChatChannel, ChatIntent, FaqCategory, SessionStatus } from "@/mocks/chatbot";
+import type { ChatChannel, ChatIntent, FaqCategory, SessionStatus } from "@/stores/chatbot";
 
 export const FAQ_CATEGORY_LABELS: Record<FaqCategory, string> = {
   LINE: "Tuyến",

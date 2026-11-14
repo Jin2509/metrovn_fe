@@ -179,8 +179,8 @@ Kịch bản thử:
 
 | File | Vai trò |
 |---|---|
-| `src/mocks/requests.ts` | Kiểu dữ liệu và store: yêu cầu, luồng trao đổi, yêu cầu đang xử lý, dữ liệu mẫu W1–W4 |
-| `src/mocks/admin.ts` | `Approval.workRequestId`; `submitApproval` tự gắn đề xuất vào yêu cầu đang xử lý |
+| `src/stores/requests.ts` | Kiểu dữ liệu và store: yêu cầu, luồng trao đổi, yêu cầu đang xử lý (dữ liệu mẫu W1–W4 chỉ còn trong `src/test/fixtures`) |
+| `src/stores/admin.ts` | `Approval.workRequestId`; `submitApproval` tự gắn đề xuất vào yêu cầu đang xử lý |
 | `src/pages/approvals/work-requests.service.ts` | Chuyển trạng thái, đang chờ ai, số trên menu, kiểm tra tệp, đồng bộ sau khi duyệt |
 | `src/pages/approvals/approvals.service.ts` | Chặn tự duyệt và quyết định lại; gọi `syncAfterChangeDecision` |
 | `src/pages/approvals/ApprovalsPage.tsx` | Các tab theo vai trò |

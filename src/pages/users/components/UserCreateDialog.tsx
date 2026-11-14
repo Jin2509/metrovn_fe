@@ -1,3 +1,5 @@
+import { FieldError } from "@/components/form-field";
+import { fieldErrorProps, useFocusFirstInvalid } from "@/components/form-field.utils";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -37,33 +39,46 @@ export function UserCreateDialog({
   onDraftChange: (draft: UserCreateDraft) => void;
   onSubmit: () => void;
 }) {
+  const { ref, focusFirstInvalid } = useFocusFirstInvalid<HTMLDivElement>();
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Tạo tài khoản nội bộ</DialogTitle>
         </DialogHeader>
-        <div className="space-y-3">
-          <div>
-            <Label>Họ tên</Label>
+        <div ref={ref} className="space-y-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="user-name">Họ tên</Label>
+            {/* Thông tin của người khác, không phải của người đang đăng nhập: tắt tự điền. */}
             <Input
+              id="user-name"
+              autoComplete="off"
+              required
               value={draft.name}
               onChange={(event) => onDraftChange({ ...draft, name: event.target.value })}
+              {...fieldErrorProps("user-name", errors.name)}
             />
-            {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
+            <FieldError fieldId="user-name">{errors.name}</FieldError>
           </div>
-          <div>
-            <Label>Email</Label>
+          <div className="space-y-1.5">
+            <Label htmlFor="user-email">Email</Label>
             <Input
+              id="user-email"
+              type="email"
+              inputMode="email"
+              autoComplete="off"
+              spellCheck={false}
+              required
               value={draft.email}
               onChange={(event) => onDraftChange({ ...draft, email: event.target.value })}
+              {...fieldErrorProps("user-email", errors.email)}
             />
-            {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
+            <FieldError fieldId="user-email">{errors.email}</FieldError>
           </div>
-          <div>
-            <Label>Vai trò</Label>
+          <div className="space-y-1.5">
+            <Label htmlFor="user-role">Vai trò</Label>
             <Select value={draft.role} onValueChange={(role) => onDraftChange({ ...draft, role })}>
-              <SelectTrigger>
+              <SelectTrigger id="user-role">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -83,7 +98,13 @@ export function UserCreateDialog({
           <Button variant="outline" onClick={onClose}>
             Hủy
           </Button>
-          <Button disabled={pending} onClick={onSubmit}>
+          <Button
+            disabled={pending}
+            onClick={() => {
+              onSubmit();
+              focusFirstInvalid();
+            }}
+          >
             Tạo tài khoản
           </Button>
         </DialogFooter>

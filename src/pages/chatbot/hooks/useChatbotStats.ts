@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { handledQuestionsStore, messagesStore, sessionsStore } from "@/mocks/chatbot";
+import { handledQuestionsStore, messagesStore, sessionsStore } from "@/stores/chatbot";
 import {
   byUseCase,
   computeStats,

@@ -18,7 +18,7 @@ import appCss from "../styles.css?url";
 
 function NotFoundComponent() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+    <div className="flex min-h-dvh items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-7xl font-bold text-foreground">404</h1>
         <h2 className="mt-4 text-xl font-semibold text-foreground">Không tìm thấy trang</h2>
@@ -43,7 +43,7 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
   const router = useRouter();
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+    <div className="flex min-h-dvh items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-xl font-semibold tracking-tight text-foreground">
           Không tải được trang
@@ -78,6 +78,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
+      // Báo sớm cho trình duyệt trang hỗ trợ cả hai giao diện để nền canvas không nháy trắng.
+      { name: "color-scheme", content: "light dark" },
       { title: "HopOn" },
       { name: "description", content: "Website quản trị HopOn" },
       { property: "og:type", content: "website" },
@@ -104,10 +106,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   errorComponent: ErrorComponent,
 });
 
+/**
+ * Áp giao diện sáng/tối trước lần vẽ đầu (cùng khoá lưu với `lib/theme.ts`), tránh trang nháy sáng rồi mới
+ * tối khi React mount xong. `initTheme()` vẫn chạy sau đó và theo dõi thay đổi của hệ điều hành.
+ */
+const THEME_BOOTSTRAP = `(()=>{try{var t=localStorage.getItem("metro.theme");var d=t==="dark"||(t!=="light"&&matchMedia("(prefers-color-scheme: dark)").matches);var e=document.documentElement;e.classList.toggle("dark",d);e.style.colorScheme=d?"dark":"light"}catch(_){}})()`;
+
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="vi">
+    // Script bên dưới đổi class/style của <html> trước khi hydrate.
+    <html lang="vi" suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
         <HeadContent />
       </head>
       <body>

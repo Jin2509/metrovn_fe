@@ -31,6 +31,8 @@ export function UsersTable({
   return (
     <DataTable
       rows={rows}
+      rowKey={(user) => user.id}
+      rowActionLabel={(user) => `Xem tài khoản ${user.fullName}`}
       onRow={onSelect}
       cols={cols}
       empty={loading ? "Đang tải dữ liệu…" : empty}

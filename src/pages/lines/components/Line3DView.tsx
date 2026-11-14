@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { STRUCTURE_LABEL, STRUCTURE_LEVEL_M } from "@/mocks/line-structure";
+import { STRUCTURE_LABEL, STRUCTURE_LEVEL_M } from "@/stores/line-structure";
 import { LINE_3D_PRESETS, SEGMENT_STRUCTURE_LABEL } from "@/pages/lines/lines.constants";
 import { visibleLabelIds } from "@/pages/lines/lines.service";
 import type { Line3DModel, Line3DNode, Line3DSegment } from "@/pages/lines/lines.types";

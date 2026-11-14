@@ -13,8 +13,8 @@ import {
 } from "@/components/ui/sheet";
 import { useAuth } from "@/lib/auth";
 import { navGroups } from "@/components/layout/nav.config";
-import type { Approval } from "@/mocks/admin";
-import { activeWorkRequestStore, type WorkRequest } from "@/mocks/requests";
+import type { Approval } from "@/stores/admin";
+import { activeWorkRequestStore, type WorkRequest } from "@/stores/requests";
 import { NoteDialog } from "@/pages/approvals/components/NoteDialog";
 import { AttachmentList } from "@/pages/approvals/components/RequestAttachments";
 import { RequestThread } from "@/pages/approvals/components/RequestThread";

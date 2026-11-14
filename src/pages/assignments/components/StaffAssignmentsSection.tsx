@@ -1,47 +1,60 @@
-import { Badge } from "@/components/ui/badge";
+import { X } from "lucide-react";
 import { DataTable, Section, StatusBadge } from "@/components/shared";
-import { Button } from "@/components/ui/button";
-import type { User } from "@/mocks/admin";
-import type { Station } from "@/mocks/metro";
+import { Badge } from "@/components/ui/badge";
+import type { StaffAssignment } from "@/lib/api";
+import type { StaffRow } from "@/pages/assignments/hooks/useAssignments";
 
 export function StaffAssignmentsSection({
   staff,
-  stations,
-  pendingIds,
+  canManage,
+  pending,
   onUnassign,
 }: {
-  staff: User[];
-  stations: Station[];
-  pendingIds: (string | undefined)[];
-  onUnassign: (userId: string) => void;
+  staff: StaffRow[];
+  canManage: boolean;
+  pending: boolean;
+  onUnassign: (assignment: StaffAssignment) => void;
 }) {
   return (
     <Section title="Nhân viên ga">
       <DataTable
         rows={staff}
+        rowKey={(user) => user.id}
         cols={[
-          { h: "Nhân viên", c: (user) => user.name },
+          {
+            h: "Nhân viên",
+            c: (user) => (
+              <div>
+                <p className="font-medium">{user.fullName}</p>
+                <p className="text-xs text-muted-foreground">{user.email}</p>
+              </div>
+            ),
+          },
           { h: "Trạng thái", c: (user) => <StatusBadge s={user.status} /> },
           {
             h: "Ga phụ trách",
             c: (user) =>
-              stations.find((station) => station.id === user.stationId)?.name ?? (
-                <span className="text-muted-foreground">Chưa phân công</span>
-              ),
-          },
-          {
-            h: "",
-            c: (user) =>
-              pendingIds.includes(user.id) ? (
-                <Badge variant="outline" className="whitespace-nowrap font-normal">
-                  Chờ duyệt
-                </Badge>
+              user.assignments.length ? (
+                <span className="flex flex-wrap gap-1.5">
+                  {user.assignments.map((a) => (
+                    <Badge key={a.stationId} variant="secondary" className="gap-1 font-normal">
+                      {a.stationName}
+                      {canManage && (
+                        <button
+                          type="button"
+                          disabled={pending}
+                          className="rounded-sm hover:text-destructive disabled:opacity-50"
+                          aria-label={`Gỡ ${user.fullName} khỏi ga ${a.stationName}`}
+                          onClick={() => onUnassign(a)}
+                        >
+                          <X className="h-3 w-3" aria-hidden />
+                        </button>
+                      )}
+                    </Badge>
+                  ))}
+                </span>
               ) : (
-                user.stationId && (
-                  <Button size="sm" variant="ghost" onClick={() => onUnassign(user.id)}>
-                    Gỡ
-                  </Button>
-                )
+                <span className="text-muted-foreground">Chưa phân công</span>
               ),
           },
         ]}

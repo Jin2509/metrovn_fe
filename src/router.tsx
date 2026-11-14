@@ -3,7 +3,8 @@ import { createRouter } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
 
 export const getRouter = () => {
-  const queryClient = new QueryClient();
+  // Dữ liệu dùng lại 30 giây khi chuyển trang; thao tác ghi tự tải lại khoá liên quan (invalidate).
+  const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 30_000 } } });
 
   const router = createRouter({
     routeTree,

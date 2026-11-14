@@ -1,3 +1,5 @@
+import { FieldError } from "@/components/form-field";
+import { fieldErrorProps, useFocusFirstInvalid } from "@/components/form-field.utils";
 import { LazyMap } from "@/components/lazy-map";
 import type { MapNetwork } from "@/components/metro-map";
 import { Button } from "@/components/ui/button";
@@ -42,6 +44,7 @@ export function StationFormDialog({
   onClose: () => void;
   onSubmit: () => void;
 }) {
+  const { ref, focusFirstInvalid } = useFocusFirstInvalid<HTMLDivElement>();
   if (!form) return null;
   const d = form.draft;
   const set = (patch: Partial<StationDraft>) => onChange({ ...d, ...patch });
@@ -55,8 +58,9 @@ export function StationFormDialog({
           set({ [key]: key === "code" ? e.target.value.toUpperCase() : e.target.value })
         }
         {...props}
+        {...fieldErrorProps(`st-${key}`, errors[key])}
       />
-      {errors[key] && <p className="text-xs text-destructive">{errors[key]}</p>}
+      <FieldError fieldId={`st-${key}`}>{errors[key]}</FieldError>
     </div>
   );
   const lat = Number(d.lat);
@@ -72,7 +76,7 @@ export function StationFormDialog({
             Bấm lên bản đồ để chọn vị trí ga, hoặc nhập vĩ độ/kinh độ.
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div ref={ref} className="grid gap-4 sm:grid-cols-2">
           {text("code", "Mã ga", { maxLength: 20 })}
           {text("name", "Tên ga", { maxLength: 100 })}
           {text("address", "Địa chỉ", { maxLength: 255 })}
@@ -92,9 +96,9 @@ export function StationFormDialog({
             />
           </div>
           <div className="space-y-1.5">
-            <Label>Trạng thái</Label>
+            <Label htmlFor="st-status">Trạng thái</Label>
             <Select value={d.status} onValueChange={(v) => set({ status: v as StationApiStatus })}>
-              <SelectTrigger>
+              <SelectTrigger id="st-status">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -116,7 +120,13 @@ export function StationFormDialog({
           <Button variant="outline" disabled={pending} onClick={onClose}>
             Huỷ
           </Button>
-          <Button disabled={pending} onClick={onSubmit}>
+          <Button
+            disabled={pending}
+            onClick={() => {
+              onSubmit();
+              focusFirstInvalid();
+            }}
+          >
             {pending ? "Đang lưu…" : form.id ? "Lưu thay đổi" : "Thêm ga"}
           </Button>
         </DialogFooter>

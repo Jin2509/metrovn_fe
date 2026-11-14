@@ -7,19 +7,25 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { useAuth } from "@/lib/auth";
 import { sidebarCollapsedStore, toggleSidebar } from "@/lib/sidebar";
 import { cn } from "@/lib/utils";
-import { approvalsStore } from "@/mocks/admin";
-import { workRequestsStore } from "@/mocks/requests";
+import { approvalsStore } from "@/stores/admin";
+import { workRequestsStore } from "@/stores/requests";
 import { inboxCount } from "@/pages/approvals/work-requests.service";
-import { incidentsStore } from "@/mocks/incidents";
-import { isOpen } from "@/pages/incidents/incidents.service";
+import { incidentsStore } from "@/stores/incidents";
+import { useApprovalsData } from "@/pages/approvals/approvals.service";
+import { isOpen, useIncidentsData } from "@/pages/incidents/incidents.service";
 import {
   studentStats,
   studentVerificationsStore,
+  useStudentVerificationsData,
 } from "@/pages/studentverification/student.service";
 
 /** Số việc đang chờ xử lý hiển thị cạnh mục menu tương ứng. */
 function useNavBadges(): Partial<Record<string, number>> {
-  const { role } = useAuth();
+  const { role, hasPermission } = useAuth();
+  // Tải số liệu cho huy hiệu ở mọi trang; mỗi nguồn chỉ tải khi có quyền.
+  useApprovalsData();
+  useIncidentsData(hasPermission("INCIDENT_MANAGE"));
+  useStudentVerificationsData(hasPermission("STUDENT_VERIFY"));
   const approvals = approvalsStore.use();
   const requests = workRequestsStore.use();
   const pending = role ? inboxCount(role, requests, approvals) : 0;
@@ -106,6 +112,7 @@ function SidebarNav({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?
                   {!!badge && (
                     <span className="rounded-full bg-accent px-1.5 text-xs font-semibold text-accent-foreground">
                       {badge}
+                      <span className="sr-only"> việc chờ xử lý</span>
                     </span>
                   )}
                 </Link>
@@ -163,7 +170,7 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        "sticky top-0 z-40 hidden h-screen shrink-0 border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-200 md:block",
+        "sticky top-0 z-40 hidden h-dvh shrink-0 border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-200 motion-reduce:transition-none md:block",
         collapsed ? "w-16" : "w-64",
       )}
     >

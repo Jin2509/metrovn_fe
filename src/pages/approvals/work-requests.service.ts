@@ -1,9 +1,10 @@
 import type { Role } from "@/lib/auth";
 import { getActorName } from "@/lib/auth";
-import { approvalsStore, logAction, type Approval } from "@/mocks/admin";
+import { approvalsStore, logAction, type Approval } from "@/stores/admin";
 import {
   activeWorkRequestStore,
   appendThreadMessage,
+  approvalLinksStore,
   nextId,
   nowLabel,
   threadsStore,
@@ -13,7 +14,7 @@ import {
   type WorkPriority,
   type WorkRequest,
   type WorkStatus,
-} from "@/mocks/requests";
+} from "@/stores/requests";
 import {
   ATTACHMENT_ACCEPT,
   ATTACHMENT_MAX_BYTES,
@@ -260,6 +261,20 @@ export function stopActiveWork() {
 }
 
 /**
+ * Gọi ngay sau khi Admin gửi duyệt một mục trên backend (cấu hình vận hành, giá vé, thông báo).
+ * Đang làm một yêu cầu của Manager thì gắn mục đó vào yêu cầu và ghi vào luồng trao đổi.
+ */
+export function linkToActiveWork(approvalId: string, title: string) {
+  const workId = activeWorkRequestStore.get();
+  const request = workId && workRequestsStore.get().find((r) => r.id === workId);
+  if (!workId || !request || isClosed(request.status)) return;
+  approvalLinksStore.set((links) => ({ ...links, [approvalId]: workId }));
+  appendThreadMessage(workId, `${getActorName()} đã gửi đề xuất “${title}” để Manager duyệt.`, {
+    system: true,
+  });
+}
+
+/**
  * Gọi sau khi Manager quyết định một đề xuất. Đề xuất có gắn yêu cầu thì cập nhật yêu cầu đó:
  * duyệt (và không còn đề xuất nào khác đang chờ) ⇒ DONE; từ chối ⇒ yêu cầu quay về Admin.
  */
@@ -269,7 +284,9 @@ export function syncAfterChangeDecision(approval: Approval, approved: boolean, r
   if (!id || !request || isClosed(request.status)) return;
   if (approved) {
     appendThreadMessage(id, `Đề xuất “${approval.title}” đã được duyệt.`, { system: true });
-    if (hasPendingChange(id, approvalsStore.get())) return;
+    // Kho đề xuất chưa kịp tải lại: bỏ qua chính đề xuất vừa duyệt khi xét còn đề xuất chờ không.
+    const others = approvalsStore.get().filter((a) => a.id !== approval.id);
+    if (hasPendingChange(id, others)) return;
     update(id, ["IN_PROGRESS", "NEEDS_INFO", "RESOLVED"], () => ({
       status: "DONE",
       resolution: `Hoàn tất qua đề xuất “${approval.title}”.`,

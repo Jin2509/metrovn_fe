@@ -1,4 +1,5 @@
 import { apiRequest } from "./client";
+import { V1, seg } from "./path";
 import type {
   AddLineStationBody,
   CreateLineBody,
@@ -19,8 +20,7 @@ import type {
 } from "./types";
 
 // Tuyến, ga, chuyển tuyến. GET cần đăng nhập; POST/PUT/DELETE cần quyền STATION_MANAGE.
-const V1 = "/api/v1";
-const id = (value: number | string) => encodeURIComponent(String(value));
+const id = seg;
 
 export const linesApi = {
   list: (query: LineListQuery = {}) => apiRequest<Page<LineResponse>>(`${V1}/lines`, { query }),

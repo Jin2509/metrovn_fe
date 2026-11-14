@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { runningTimeMinutes } from "@/lib/network";
 import { simulateTrains } from "@/lib/train-simulation";
-import { lineStationRows, stations } from "@/mocks/metro";
+import { lineStationRows, stations } from "@/stores/metro";
 
 const rows = lineStationRows("L1");
 const config = { startTime: "05:00", endTime: "22:00", headwayMinutes: 6 };

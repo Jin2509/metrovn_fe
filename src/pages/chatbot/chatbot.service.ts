@@ -1,25 +1,51 @@
-import { getActorName } from "@/lib/auth/session.store";
-import { logAction } from "@/mocks/admin";
+import { chatbotFaqsApi, type ChatFaqResponse } from "@/lib/api";
+import { useSyncedQuery } from "@/lib/query-sync";
 import {
   faqStore,
   handledQuestionsStore,
   type ChatbotFaq,
   type FaqCategory,
-} from "@/mocks/chatbot";
+} from "@/stores/chatbot";
+import { FAQ_CATEGORY_LABELS } from "@/pages/chatbot/chatbot.constants";
 
-export type FaqDraft = Pick<ChatbotFaq, "category" | "question" | "answer" | "keywords"> & {
-  active: boolean;
-};
-export type FaqErrors = Partial<Record<"question" | "answer", string>>;
+export type FaqDraft = Pick<ChatbotFaq, "category" | "question" | "answer" | "keywords">;
+export type FaqErrors = Partial<Record<"question" | "answer" | "category", string>>;
 
-const now = () => new Date().toLocaleString("sv-SE").slice(0, 16);
+export const FAQS_KEY = ["chatbot", "faqs"] as const;
+/** Kho tri thức nhỏ: tải một lần đủ để tìm kiếm, lọc ngay trên trình duyệt. */
+const FETCH_SIZE = 500;
+
+const isCategory = (value: string): value is FaqCategory => value in FAQ_CATEGORY_LABELS;
+
+export const toFaq = (f: ChatFaqResponse): ChatbotFaq => ({
+  id: String(f.id),
+  // Danh mục backend là chuỗi tự do; giá trị lạ xếp vào "Khác".
+  category: isCategory(f.category) ? f.category : "OTHER",
+  question: f.question,
+  answer: f.answer,
+  keywords: f.keywords ?? "",
+  status: "ACTIVE",
+  createdBy: "",
+  createdAt: f.updatedAt,
+  updatedAt: f.updatedAt,
+});
+
+/** Kho FAQ, đồng bộ vào `faqStore`. Cần CHATBOT_MANAGE. */
+export function useFaqsData(enabled = true) {
+  return useSyncedQuery({
+    queryKey: FAQS_KEY,
+    queryFn: () => chatbotFaqsApi.list({ size: FETCH_SIZE }),
+    store: faqStore,
+    map: (page) => page.content.map(toFaq),
+    enabled,
+  });
+}
 
 export const emptyFaq = (question = "", category: FaqCategory = "OTHER"): FaqDraft => ({
   category,
   question,
   answer: "",
   keywords: "",
-  active: true,
 });
 
 export const toFaqDraft = (f: ChatbotFaq): FaqDraft => ({
@@ -27,7 +53,6 @@ export const toFaqDraft = (f: ChatbotFaq): FaqDraft => ({
   question: f.question,
   answer: f.answer,
   keywords: f.keywords,
-  active: f.status === "ACTIVE",
 });
 
 export function validateFaq(d: FaqDraft, all: ChatbotFaq[], editingId?: string): FaqErrors {
@@ -54,37 +79,16 @@ export const normalizeKeywords = (raw: string) =>
   ].join(", ");
 
 export function saveFaq(d: FaqDraft, editingId?: string) {
-  const fields = {
+  const body = {
     category: d.category,
     question: d.question.trim(),
     answer: d.answer.trim(),
-    keywords: normalizeKeywords(d.keywords),
-    status: d.active ? ("ACTIVE" as const) : ("INACTIVE" as const),
-    updatedAt: now(),
+    keywords: normalizeKeywords(d.keywords) || undefined,
   };
-  if (editingId)
-    faqStore.set((list) => list.map((f) => (f.id === editingId ? { ...f, ...fields } : f)));
-  else
-    faqStore.set((list) => [
-      {
-        id: `FAQ-${String(Date.now()).slice(-4)}`,
-        createdBy: getActorName(),
-        createdAt: now(),
-        ...fields,
-      },
-      ...list,
-    ]);
-  logAction(editingId ? "Sửa FAQ chatbot" : "Thêm FAQ chatbot", fields.question);
+  return editingId ? chatbotFaqsApi.update(Number(editingId), body) : chatbotFaqsApi.create(body);
 }
 
-export function setFaqActive(f: ChatbotFaq, active: boolean) {
-  faqStore.set((list) =>
-    list.map((x) =>
-      x.id === f.id ? { ...x, status: active ? "ACTIVE" : "INACTIVE", updatedAt: now() } : x,
-    ),
-  );
-  logAction(active ? "Bật FAQ chatbot" : "Tắt FAQ chatbot", f.question);
-}
+export const deleteFaq = (f: ChatbotFaq) => chatbotFaqsApi.remove(Number(f.id));
 
 export function markQuestion(question: string, state: "ADDED" | "IGNORED") {
   handledQuestionsStore.set((m) => ({ ...m, [question]: state }));

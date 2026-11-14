@@ -1,6 +1,6 @@
 import { CalendarCog, TrainFront, Wrench } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
-import { StatCard } from "@/components/shared";
+import { LoadState, ReasonDialog, StatCard } from "@/components/shared";
 import { ConfigEditorDialog } from "@/pages/trains/components/ConfigEditorDialog";
 import { OperationConfigSection } from "@/pages/trains/components/OperationConfigSection";
 import { TrainFleetSection } from "@/pages/trains/components/TrainFleetSection";
@@ -12,6 +12,7 @@ export function TrainsPage() {
 
   return (
     <AppShell title="Tàu & vận hành">
+      <LoadState loading={t.loading} error={t.loadError} onRetry={() => void t.reload()} />
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label="Đang chạy"
@@ -46,17 +47,34 @@ export function TrainsPage() {
         />
       </div>
       <OperationConfigSection
+        lines={t.lines}
+        lineId={t.lineId}
+        lineLabel={t.line ? `${t.line.code} · ${t.line.name}` : "—"}
+        onLineChange={t.setLineId}
         configs={t.configs}
+        canManage={t.canManage}
+        canApprove={t.canApprove}
+        pending={t.pending}
         onCreate={t.openCreate}
         onEdit={t.openEdit}
-        onSend={t.send}
+        onAction={t.act}
+        onReject={t.setRejecting}
       />
-      <TrainFleetSection />
+      <TrainFleetSection canEdit={t.canManage} />
+      <ReasonDialog
+        open={!!t.rejecting}
+        title={t.rejecting ? `Từ chối cấu hình v${t.rejecting.version}` : ""}
+        confirmLabel="Từ chối"
+        onClose={() => t.setRejecting(null)}
+        onConfirm={(reason) => void t.reject(reason)}
+      />
       <ConfigEditorDialog
         editor={t.editor}
         onChange={(draft) => t.setEditor((e) => (e ? { ...e, draft } : e))}
+        lineLabel={t.line?.code ?? ""}
+        pending={t.pending}
         onClose={() => t.setEditor(null)}
-        onSave={t.saveEditor}
+        onSave={() => void t.saveEditor()}
       />
     </AppShell>
   );

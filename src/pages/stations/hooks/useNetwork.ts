@@ -1,5 +1,5 @@
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import type { MapNetwork } from "@/components/metro-map";
 import {
   apiErrorMessage,
@@ -9,7 +9,13 @@ import {
   type LineStationResponse,
   type StationResponse,
 } from "@/lib/api";
-import type { Station } from "@/mocks/metro";
+import {
+  lineStationsStore,
+  replaceLines,
+  replaceStations,
+  type LineStation,
+  type Station,
+} from "@/stores/metro";
 
 /** Mọi dữ liệu tuyến/ga đều nằm dưới khoá này: invalidate khoá gốc là tải lại toàn bộ. */
 export const NETWORK_KEY = ["network"] as const;
@@ -129,4 +135,30 @@ export function useNetwork() {
     loadError: error ? apiErrorMessage(error) : "",
     reload: () => queryClient.invalidateQueries({ queryKey: NETWORK_KEY }),
   };
+}
+
+/**
+ * Nạp mạng lưới thật vào kho dùng chung (`@/stores/metro`) để các chỗ tra cứu đồng bộ như
+ * `stationName(id)`, `lineCode(id)`, bản đồ và mô phỏng tàu dùng đúng dữ liệu backend.
+ * Gắn một lần trong `AppShell`; TanStack Query dùng chung cache nên không gọi API thêm.
+ */
+export function useNetworkSync() {
+  const net = useNetwork();
+  useEffect(() => {
+    if (net.loading) return;
+    replaceLines(net.mapNetwork.lines);
+    replaceStations(net.mapNetwork.stations);
+    lineStationsStore.set(() =>
+      Object.values(net.lineStations).flatMap((rows) =>
+        rows.map((r): LineStation => ({
+          lineId: String(r.lineId),
+          stationId: String(r.station.id),
+          order: r.stationOrder,
+          distanceFromPrevKm: r.stationOrder === 1 ? null : r.distanceFromPrevKm,
+          travelTimeFromPrevSec: r.stationOrder === 1 ? null : r.travelTimeFromPrevSeconds,
+          dwellSec: r.dwellTimeSeconds,
+        })),
+      ),
+    );
+  }, [net.loading, net.mapNetwork, net.lineStations]);
 }

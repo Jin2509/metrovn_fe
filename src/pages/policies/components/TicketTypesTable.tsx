@@ -1,5 +1,5 @@
 import { DataTable, money, Section } from "@/components/shared";
-import { formatValidity } from "@/mocks/admin";
+import { formatValidity } from "@/stores/admin";
 import type { TicketType } from "@/pages/policies/policies.types";
 
 export function TicketTypesTable({ ticketTypes }: { ticketTypes: TicketType[] }) {

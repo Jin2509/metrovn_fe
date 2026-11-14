@@ -1,12 +1,22 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 import { ReasonDialog, Section } from "@/components/shared";
 import { Button } from "@/components/ui/button";
-import { approvalLabel, approvalsStore, type Approval } from "@/mocks/admin";
-import { announcementsStore } from "@/mocks/announcements";
-import { incidentsStore } from "@/mocks/incidents";
-import { workRequestsStore } from "@/mocks/requests";
-import { applyApprovalDecision } from "@/pages/approvals/approvals.service";
+import { useUserNames } from "@/hooks/use-user-names";
+import { apiErrorMessage } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
+import { fmtInstant } from "@/lib/query-sync";
+import { approvalLabel, approvalsStore, type Approval } from "@/stores/admin";
+import { announcementsStore } from "@/stores/announcements";
+import { incidentsStore } from "@/stores/incidents";
+import { workRequestsStore } from "@/stores/requests";
+import {
+  applyApprovalDecision,
+  sourceKey,
+  useApprovalsData,
+} from "@/pages/approvals/approvals.service";
+import { useTodayReports } from "@/pages/dashboard/dashboard.data";
 import {
   IncidentQuickList,
   KpiStrip,
@@ -17,7 +27,11 @@ import {
 } from "@/pages/dashboard/components/DashboardWidgets";
 import { isOpen } from "@/pages/incidents/incidents.service";
 import { SEVERITY_LABELS } from "@/pages/notifications/notifications.constants";
-import { phaseOf, scopeLabel } from "@/pages/notifications/notifications.service";
+import {
+  phaseOf,
+  scopeLabel,
+  useAnnouncementsData,
+} from "@/pages/notifications/notifications.service";
 import {
   studentStats,
   studentVerificationsStore,
@@ -27,14 +41,28 @@ const SHOWN_REQUESTS = 5;
 const SHOWN_CHANGES = 3;
 
 function ApprovalQuickList({ pending }: { pending: Approval[] }) {
+  const queryClient = useQueryClient();
+  const { canDecide } = useApprovalsData();
+  const { user } = useAuth();
+  const nameOf = useUserNames();
   const [rejecting, setRejecting] = useState<Approval | null>(null);
+  const [busy, setBusy] = useState(false);
   const oldestFirst = [...pending].reverse().slice(0, SHOWN_REQUESTS);
+  const allowed = (a: Approval) => canDecide[a.type] && a.by !== user?.id;
 
-  const decide = (approval: Approval, reason?: string) => {
-    const error = applyApprovalDecision(approval, reason ? "REJECTED" : "APPROVED", reason);
-    if (error) return toast.error(error);
-    toast.success(reason ? "Đã từ chối" : "Đã phê duyệt");
-    setRejecting(null);
+  const decide = async (approval: Approval, reason?: string) => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await applyApprovalDecision(approval, reason ? "REJECTED" : "APPROVED", reason);
+      toast.success(reason ? "Đã từ chối" : "Đã phê duyệt");
+      setRejecting(null);
+      await queryClient.invalidateQueries({ queryKey: sourceKey(approval.type) });
+    } catch (error) {
+      toast.error(apiErrorMessage(error));
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -50,7 +78,7 @@ function ApprovalQuickList({ pending }: { pending: Approval[] }) {
               <div className="min-w-0 flex-1 basis-64">
                 <p className="text-sm font-medium">{approval.title}</p>
                 <p className="text-xs text-muted-foreground">
-                  {approvalLabel[approval.type]} · {approval.by} · {approval.at}
+                  {approvalLabel[approval.type]} · {nameOf(approval.by)} · {fmtInstant(approval.at)}
                 </p>
                 <ul className="mt-1.5 space-y-0.5 text-xs">
                   {approval.changes.slice(0, SHOWN_CHANGES).map((change) => (
@@ -73,14 +101,21 @@ function ApprovalQuickList({ pending }: { pending: Approval[] }) {
                   )}
                 </ul>
               </div>
-              <div className="flex gap-2">
-                <Button size="sm" onClick={() => decide(approval)}>
-                  Duyệt
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => setRejecting(approval)}>
-                  Từ chối
-                </Button>
-              </div>
+              {allowed(approval) && (
+                <div className="flex gap-2">
+                  <Button size="sm" disabled={busy} onClick={() => void decide(approval)}>
+                    Duyệt
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={busy}
+                    onClick={() => setRejecting(approval)}
+                  >
+                    Từ chối
+                  </Button>
+                </div>
+              )}
             </li>
           ))}
         </ul>
@@ -92,7 +127,7 @@ function ApprovalQuickList({ pending }: { pending: Approval[] }) {
         title={rejecting ? `Từ chối: ${rejecting.title}` : ""}
         confirmLabel="Từ chối"
         onClose={() => setRejecting(null)}
-        onConfirm={(reason) => rejecting && decide(rejecting, reason)}
+        onConfirm={(reason) => rejecting && void decide(rejecting, reason)}
       />
     </Section>
   );
@@ -100,6 +135,11 @@ function ApprovalQuickList({ pending }: { pending: Approval[] }) {
 
 /** Manager: duyệt yêu cầu ngay tại đây là việc chính, sự cố và thông báo để theo dõi. */
 export function ManagerDashboard() {
+  const { hasPermission } = useAuth();
+  useAnnouncementsData(
+    hasPermission("ANNOUNCEMENT_MANAGE") || hasPermission("ANNOUNCEMENT_APPROVE"),
+  );
+  const report = useTodayReports();
   const pending = approvalsStore.use().filter((a) => a.status === "PENDING");
   const incidents = incidentsStore.use().filter(isOpen);
   const students = studentStats(studentVerificationsStore.use());
@@ -116,10 +156,10 @@ export function ManagerDashboard() {
           {
             label: "Sự cố đang mở",
             value: incidents.length,
-            hint: `${incidents.filter((i) => i.severity === "EMERGENCY").length} khẩn cấp`,
+            hint: `${incidents.filter((i) => i.severity === "CRITICAL").length} khẩn cấp`,
           },
           { label: "Hồ sơ sinh viên cần xem", value: students.needsReview },
-          { label: "Doanh thu hôm nay", value: "512,4 triệu VND" },
+          { label: "Doanh thu hôm nay", value: report.revenueText },
         ]}
       />
       <div className="grid items-start gap-6 xl:grid-cols-[1.6fr_1fr]">
@@ -162,7 +202,13 @@ export function ManagerDashboard() {
               <p className="text-sm text-muted-foreground">Không có thông báo nào.</p>
             )}
           </Section>
-          <RevenueChart />
+          {report.canRevenue && (
+            <RevenueChart
+              rows={report.week}
+              loading={report.weekLoading}
+              error={report.weekError}
+            />
+          )}
         </div>
       </div>
     </>

@@ -1,4 +1,5 @@
 import "@testing-library/jest-dom/vitest";
+import { seedStores } from "./fixtures";
 
 Object.defineProperty(window, "scrollTo", {
   writable: true,
@@ -18,3 +19,6 @@ Object.defineProperty(window, "matchMedia", {
     dispatchEvent: () => {},
   }),
 });
+
+// Các store của app khởi tạo rỗng; test dùng dữ liệu cố định trong `src/test/fixtures`.
+seedStores();

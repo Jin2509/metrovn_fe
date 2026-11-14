@@ -1,7 +1,7 @@
 import { Section } from "@/components/shared";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import type { MetroLine } from "@/mocks/metro";
+import type { MetroLine } from "@/stores/metro";
 import { MAP_COLORS } from "@/pages/map/hooks/useMap";
 
 const LEGEND: [string, string][] = [

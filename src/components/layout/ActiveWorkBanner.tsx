@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
-import { activeWorkRequestStore, workRequestsStore } from "@/mocks/requests";
+import { activeWorkRequestStore, workRequestsStore } from "@/stores/requests";
 import { stopActiveWork } from "@/pages/approvals/work-requests.service";
 
 /**

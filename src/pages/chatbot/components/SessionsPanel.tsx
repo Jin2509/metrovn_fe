@@ -13,7 +13,7 @@ import {
   sessionsStore,
   type ChatChannel,
   type SessionStatus,
-} from "@/mocks/chatbot";
+} from "@/stores/chatbot";
 import { CHANNEL_LABELS, SESSION_STATUS_LABELS } from "@/pages/chatbot/chatbot.constants";
 import { SessionSheet } from "@/pages/chatbot/components/SessionSheet";
 
@@ -104,6 +104,8 @@ export function SessionsPanel() {
       </div>
       <DataTable
         rows={rows}
+        rowKey={(s) => s.id}
+        rowActionLabel={(s) => `Xem phiên ${s.id}`}
         onRow={(s) => setSelectedId(s.id)}
         empty="Không có phiên phù hợp"
         cols={[

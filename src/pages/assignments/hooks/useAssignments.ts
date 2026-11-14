@@ -1,49 +1,101 @@
+import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { assignmentCatalog } from "@/lib/catalogs";
-import { pendingRequests, type CatalogPayload } from "@/lib/change-requests";
-import { approvalsStore, usersStore } from "@/mocks/admin";
-import { stations } from "@/mocks/metro";
 import {
-  assignStaffToStation,
-  unassignStaffFromStation,
-} from "@/pages/assignments/assignments.service";
+  apiErrorMessage,
+  staffAssignmentsApi,
+  type AdminUser,
+  type StaffAssignment,
+} from "@/lib/api";
+import { useAuth } from "@/lib/auth";
+import { stationsStore } from "@/stores/metro";
+import { fetchAllUsers } from "@/pages/users/users.service";
 
+const USERS_KEY = ["admin", "users"];
+const ASSIGNMENTS_KEY = ["assignments"] as const;
+const STAFF_ROLE = "STAFF";
+const STATION_MANAGE = "STATION_MANAGE";
+
+export type StaffRow = AdminUser & { assignments: StaffAssignment[] };
+
+/** Nhân viên ga (vai trò STAFF) và các ga họ phụ trách, lấy theo từng ga. */
 export function useAssignments() {
-  const users = usersStore.use();
-  const staff = users.filter((user) => user.role === "STAFF");
+  const queryClient = useQueryClient();
+  const canManage = useAuth().hasPermission(STATION_MANAGE);
+  const stations = stationsStore.use();
+  const usersQuery = useQuery({ queryKey: USERS_KEY, queryFn: fetchAllUsers, retry: false });
+  const assignmentQueries = useQueries({
+    queries: stations.map((station) => ({
+      queryKey: [...ASSIGNMENTS_KEY, station.id],
+      queryFn: () => staffAssignmentsApi.byStation(Number(station.id)),
+      retry: false,
+    })),
+  });
+  const assignments = assignmentQueries.flatMap((q) => q.data ?? []);
+  const staff: StaffRow[] = (usersQuery.data ?? [])
+    .filter((user) => user.roles.includes(STAFF_ROLE))
+    .map((user) => ({ ...user, assignments: assignments.filter((a) => a.userId === user.id) }));
   const activeStations = stations.filter((station) => station.status === "ACTIVE");
   const [userId, setUserId] = useState("");
   const [stationId, setStationId] = useState("");
   const [error, setError] = useState("");
-  const pendingIds = pendingRequests(assignmentCatalog.key, approvalsStore.use()).map(
-    (approval) => (approval.payload as CatalogPayload).id,
-  );
+  const [pending, setPending] = useState(false);
+  const loadError = usersQuery.error ?? assignmentQueries.find((q) => q.error)?.error;
 
-  const assign = () => {
-    const assignmentError = assignStaffToStation(userId, stationId);
-    if (assignmentError) return setError(assignmentError);
-    toast.success("Đã gửi Manager duyệt");
+  const reload = (station?: string) =>
+    queryClient.invalidateQueries({
+      queryKey: station ? [...ASSIGNMENTS_KEY, station] : ASSIGNMENTS_KEY,
+    });
+
+  const assign = async () => {
+    if (pending) return;
+    if (!userId || !stationId) return setError("Vui lòng chọn nhân viên và ga");
+    const user = staff.find((s) => s.id === userId);
+    if (user?.status !== "ACTIVE") return setError("Tài khoản chưa kích hoạt hoặc đang bị khóa");
+    if (user.assignments.some((a) => String(a.stationId) === stationId))
+      return setError("Nhân viên đã phụ trách ga này");
     setError("");
+    setPending(true);
+    try {
+      const saved = await staffAssignmentsApi.assign(Number(stationId), userId);
+      toast.success(`Đã phân công ${saved.fullName} phụ trách ga ${saved.stationName}`);
+      setStationId("");
+      await reload(stationId);
+    } catch (e) {
+      setError(apiErrorMessage(e));
+    } finally {
+      setPending(false);
+    }
   };
 
-  const unassign = (id: string) => {
-    const unassignError = unassignStaffFromStation(id);
-    if (unassignError) return toast.error(unassignError);
-    toast.success("Đã gửi Manager duyệt");
+  const unassign = async (a: StaffAssignment) => {
+    if (pending) return;
+    setPending(true);
+    try {
+      await staffAssignmentsApi.unassign(a.stationId, a.userId);
+      toast.success(`Đã gỡ ${a.fullName} khỏi ga ${a.stationName}`);
+      await reload(String(a.stationId));
+    } catch (e) {
+      toast.error(apiErrorMessage(e));
+    } finally {
+      setPending(false);
+    }
   };
 
   return {
+    canManage,
+    loading: usersQuery.isPending,
+    loadError: loadError ? apiErrorMessage(loadError) : "",
+    reload: () => Promise.all([reload(), queryClient.invalidateQueries({ queryKey: USERS_KEY })]),
     staff,
-    stations,
     activeStations,
     userId,
     setUserId,
     stationId,
     setStationId,
     error,
+    pending,
     assign,
     unassign,
-    pendingIds,
   };
 }

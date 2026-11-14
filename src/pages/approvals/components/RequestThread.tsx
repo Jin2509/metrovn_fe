@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ROLE_LABELS, useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
-import { threadsStore } from "@/mocks/requests";
+import { threadsStore } from "@/stores/requests";
 import { AttachmentList, AttachmentPicker } from "@/pages/approvals/components/RequestAttachments";
 import { postMessage, toAttachments } from "@/pages/approvals/work-requests.service";
 

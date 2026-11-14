@@ -1,66 +1,45 @@
-import { hasPendingApproval, submitApproval, approvalsStore } from "@/mocks/admin";
-import { systemParamsStore, type SystemParam } from "@/mocks/system-params";
+import { systemParamsApi, type SystemParamResponse } from "@/lib/api";
 
-export type ParamValues = Record<string, number>;
+export const SYSTEM_PARAMS_KEY = ["system-params"] as const;
 
-const label = (param: SystemParam, value: number) =>
-  `${value.toLocaleString("vi-VN")} ${param.unit}`;
+/** Nhãn tiếng Việt cho các mã backend đang dùng; mã lạ hiện mô tả của backend. */
+export const PARAM_LABELS: Record<string, { label: string; unit: string }> = {
+  CPOINT_PER_CHECKIN: { label: "CPoint mỗi lần check-in", unit: "điểm" },
+  CPOINT_MAX_CHECKINS_PER_DAY: { label: "Số lần check-in tính điểm mỗi ngày", unit: "lần" },
+  CPOINT_MAX_DISCOUNT_VND: { label: "Giảm giá tối đa bằng CPoint", unit: "VND" },
+  PAYMENT_QR_TTL_MINUTES: { label: "Hiệu lực mã QR thanh toán", unit: "phút" },
+  PARKING_OVERTIME_FEE_PER_HOUR: { label: "Phí gửi xe quá giờ", unit: "VND/giờ" },
+  FARE_ROUNDING_VND: { label: "Bước làm tròn giá vé lượt", unit: "VND" },
+  FARE_MIN_VND: { label: "Giá vé lượt tối thiểu", unit: "VND" },
+};
 
-export const toValues = (params: SystemParam[]): ParamValues =>
-  Object.fromEntries(params.map((param) => [param.key, param.value]));
+export const paramLabel = (p: Pick<SystemParamResponse, "key" | "description">) =>
+  PARAM_LABELS[p.key]?.label ??
+  (p.key.startsWith("FARE_PER_KM_")
+    ? `Đơn giá/km vé ${p.key.slice("FARE_PER_KM_".length)}`
+    : (p.description ?? p.key));
 
-export function validateParams(params: SystemParam[], values: ParamValues): string[] {
-  const errors = params.flatMap((param) => {
-    const value = values[param.key];
-    if (!Number.isFinite(value)) return [`${param.label}: vui lòng nhập số`];
-    if (value < param.min || value > param.max)
-      return [`${param.label} phải từ ${param.min} đến ${param.max} ${param.unit}`];
-    return [];
-  });
-  if (values["student.minReadablePercent"] >= values["student.autoApprovePercent"])
-    errors.push("Ngưỡng tự duyệt phải cao hơn ngưỡng coi là đọc được.");
-  return errors;
-}
+export const paramUnit = (p: Pick<SystemParamResponse, "key">) =>
+  PARAM_LABELS[p.key]?.unit ?? (p.key.startsWith("FARE_PER_KM_") ? "VND/km" : "");
 
-export function diffParams(params: SystemParam[], values: ParamValues) {
-  return params
-    .filter((param) => values[param.key] !== param.value)
-    .map((param) => ({
-      field: param.label,
-      old: label(param, param.value),
-      new: label(param, values[param.key]),
-    }));
-}
+/** Nhóm của backend → tiêu đề khối trên trang. */
+export const groupLabel = (group: string) =>
+  (
+    ({
+      LOYALTY: "Tích điểm CPoint",
+      PAYMENT: "Thanh toán",
+      PARKING: "Gửi xe",
+      FARE: "Giá vé",
+    }) as Record<string, string>
+  )[group] ?? group;
 
-export const PARAM_APPROVAL_TITLE = "Thay đổi tham số hệ thống";
-
-export function submitParams(values: ParamValues): string | null {
-  const params = systemParamsStore.get();
-  if (hasPendingApproval("SYSTEM_PARAM", () => true))
-    return "Đang có một yêu cầu thay đổi tham số chờ Manager duyệt.";
-  const errors = validateParams(params, values);
-  if (errors.length) return errors[0];
-  const changes = diffParams(params, values);
-  if (!changes.length) return "Chưa có tham số nào thay đổi.";
-  submitApproval("SYSTEM_PARAM", PARAM_APPROVAL_TITLE, changes, values);
+export function validateParamValue(raw: string): string | null {
+  if (raw.trim() === "") return "Vui lòng nhập giá trị";
+  const value = Number(raw);
+  if (!Number.isInteger(value)) return "Giá trị phải là số nguyên";
+  if (value < 0) return "Giá trị không được âm";
   return null;
 }
 
-/** Áp dụng khi Manager duyệt; lưu người đề xuất và thời điểm để tra cứu về sau. */
-export function applyParams(values: ParamValues, requestedBy: string, at = new Date()) {
-  systemParamsStore.set((params) =>
-    params.map((param) =>
-      param.key in values && values[param.key] !== param.value
-        ? {
-            ...param,
-            value: values[param.key],
-            updatedBy: requestedBy,
-            updatedAt: at.toLocaleString("vi-VN"),
-          }
-        : param,
-    ),
-  );
-}
-
-export const latestParamApproval = (approvals = approvalsStore.get()) =>
-  approvals.find((approval) => approval.type === "SYSTEM_PARAM");
+export const updateParam = (key: string, value: number, effectiveFrom?: string) =>
+  systemParamsApi.update(key, { value, effectiveFrom });

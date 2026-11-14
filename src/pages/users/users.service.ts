@@ -1,5 +1,5 @@
 import { adminUsersApi, type AdminUser } from "@/lib/api";
-import { logAction } from "@/mocks/admin";
+import { logAction } from "@/stores/admin";
 import type { UserCreateDraft, UserCreateErrors } from "@/pages/users/users.types";
 
 const PAGE_SIZE = 100;

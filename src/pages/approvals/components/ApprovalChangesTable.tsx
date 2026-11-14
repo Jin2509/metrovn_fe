@@ -6,7 +6,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { Approval } from "@/mocks/admin";
+import type { Approval } from "@/stores/admin";
 
 export function ApprovalChangesTable({ changes }: { changes: Approval["changes"] }) {
   return (

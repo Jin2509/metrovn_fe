@@ -1,23 +1,20 @@
-import { useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { ApiError } from "@/lib/api";
-import { usersStore } from "@/mocks/admin";
-import type { AnnouncementAudience, AnnouncementChannel } from "@/mocks/announcements";
-import { CHANNELS_BY_AUDIENCE } from "@/pages/notifications/notifications.constants";
+import { apiErrorMessage } from "@/lib/api";
+import type { AnnouncementScope } from "@/stores/announcements";
 import {
-  deliverToBackend,
+  ANNOUNCEMENTS_KEY,
   draftPrefillStore,
   emptyDraft,
-  isScheduledForLater,
-  publish,
-  recipientCount,
   saveDraft,
+  submitDraft,
   validateDraft,
 } from "@/pages/notifications/notifications.service";
 import type { AnnouncementDraft } from "@/pages/notifications/notifications.types";
 
 export function useComposer(onDone: () => void) {
-  const users = usersStore.use();
+  const queryClient = useQueryClient();
   const [draft, setDraft] = useState<AnnouncementDraft>(() => emptyDraft());
   const [editingId, setEditingId] = useState<string | undefined>();
   const [submitted, setSubmitted] = useState(false);
@@ -33,20 +30,16 @@ export function useComposer(onDone: () => void) {
     draftPrefillStore.set(() => null);
   }, [prefill]);
 
-  const recipients = useMemo(() => recipientCount(draft.audience, users), [draft.audience, users]);
-  const errors = validateDraft(draft, recipients);
+  const errors = validateDraft(draft);
 
   const update = (patch: Partial<AnnouncementDraft>) => setDraft((d) => ({ ...d, ...patch }));
-  const setAudience = (audience: AnnouncementAudience) =>
-    setDraft((d) => {
-      const allowed = CHANNELS_BY_AUDIENCE[audience];
-      const kept = d.channels.filter((c) => allowed.includes(c));
-      return { ...d, audience, channels: kept.length ? kept : [allowed[0]] };
-    });
-  const toggleChannel = (c: AnnouncementChannel, on: boolean) =>
+  const setScope = (scope: AnnouncementScope) =>
     setDraft((d) => ({
       ...d,
-      channels: on ? [...d.channels, c] : d.channels.filter((x) => x !== c),
+      scope,
+      lineId: scope === "LINE" || scope === "STATION" ? d.lineId : undefined,
+      stationId: scope === "STATION" ? d.stationId : undefined,
+      targetRole: scope === "ROLE" ? d.targetRole : undefined,
     }));
 
   const reset = () => {
@@ -55,53 +48,36 @@ export function useComposer(onDone: () => void) {
     setSubmitted(false);
   };
 
-  const send = async () => {
+  /** `submit`: lưu rồi gửi Manager duyệt; ngược lại chỉ lưu nháp. Trả về false nếu còn lỗi. */
+  const run = async (submit: boolean) => {
     setSubmitted(true);
-    if (sending || Object.keys(errors).length) return;
-    if (isScheduledForLater(draft))
-      return void toast.error("Backend chưa hỗ trợ hẹn giờ, hãy đặt thời điểm bắt đầu là hiện tại");
+    if (sending || Object.keys(errors).length) return false;
     setSending(true);
     try {
-      const delivered = await deliverToBackend(draft);
-      if (!delivered) return void toast.error("Không có tài khoản nào trong nhóm nhận");
-      publish(draft, editingId, undefined, delivered);
-      toast.success(`Đã gửi thông báo tới ${delivered} người nhận`);
+      if (submit) await submitDraft(draft, editingId);
+      else await saveDraft(draft, editingId);
+      toast.success(submit ? "Đã gửi Manager duyệt" : "Đã lưu nháp");
+      await queryClient.invalidateQueries({ queryKey: ANNOUNCEMENTS_KEY });
       reset();
       onDone();
     } catch (error) {
-      toast.error(
-        error instanceof ApiError && error.status === 403
-          ? "Bạn không có quyền gửi thông báo"
-          : "Không gửi được thông báo, vui lòng thử lại",
-      );
+      toast.error(apiErrorMessage(error));
     } finally {
       setSending(false);
     }
-  };
-
-  const save = () => {
-    if (!draft.title.trim()) {
-      setSubmitted(true);
-      return toast.error("Vui lòng nhập tiêu đề");
-    }
-    saveDraft(draft, editingId);
-    toast.success("Đã lưu nháp");
-    reset();
-    onDone();
+    return true;
   };
 
   return {
     draft,
     editingId,
     update,
-    setAudience,
-    toggleChannel,
-    recipients,
+    setScope,
     errors,
     showErrors: submitted,
-    send,
+    submit: () => run(true),
+    save: () => run(false),
     sending,
-    save,
     reset,
   };
 }

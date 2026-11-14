@@ -1,11 +1,10 @@
-import { logAction } from "@/mocks/admin";
 import {
   trainsStore,
   type OperationConfig,
   type OperationConfigStatus,
   type Train,
   type TrainStatus,
-} from "@/mocks/operations";
+} from "@/stores/operations";
 
 // Nghiệp vụ đoàn tàu và cấu hình vận hành — mọi phép tính chỉ dùng các cột có trong bảng
 // `train` và `operation_config`.
@@ -20,7 +19,8 @@ export const TRAIN_STATUS_LABELS: Record<TrainStatus, string> = {
 export const CONFIG_STATUS_LABELS: Record<OperationConfigStatus, string> = {
   DRAFT: "Nháp",
   PENDING_APPROVAL: "Chờ duyệt",
-  APPROVED: "Đã duyệt, chờ hiệu lực",
+  APPROVED: "Đã duyệt, chờ kích hoạt",
+  REJECTED: "Bị từ chối",
   ACTIVE: "Đang áp dụng",
   INACTIVE: "Hết hiệu lực",
 };
@@ -51,7 +51,10 @@ const toMin = (t: string) => {
 export type ConfigCheck = { errors: string[]; capacity: string[]; warnings: string[] };
 
 export function checkOperationConfig(
-  c: Omit<OperationConfig, "id" | "version" | "status" | "createdBy" | "approvedBy">,
+  c: Omit<
+    OperationConfig,
+    "id" | "version" | "status" | "createdBy" | "approvedBy" | "submittedAt" | "rejectionReason"
+  >,
   available: number,
 ): ConfigCheck {
   const errors: string[] = [];

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { auditStore } from "@/mocks/admin";
+import { auditStore } from "@/stores/admin";
 import {
   AuthError,
   changePassword,

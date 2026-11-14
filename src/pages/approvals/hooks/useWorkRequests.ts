@@ -1,8 +1,8 @@
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useState } from "react";
 import type { Role } from "@/lib/auth";
-import { approvalsStore } from "@/mocks/admin";
-import { workRequestsStore } from "@/mocks/requests";
+import { approvalsStore } from "@/stores/admin";
+import { workRequestsStore } from "@/stores/requests";
 import type { WORK_FILTER_OPTIONS } from "@/pages/approvals/work-requests.constants";
 import { isClosed, waitingOn } from "@/pages/approvals/work-requests.service";
 

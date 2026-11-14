@@ -1,17 +1,24 @@
 import { useEffect, useMemo, useState } from "react";
 import type { StationMarkerState } from "@/components/metro-map";
+import { useAuth } from "@/lib/auth";
 import { stationName } from "@/lib/network";
+import { useOperationConfigsData } from "@/lib/operations.queries";
 import { simulateTrains } from "@/lib/train-simulation";
-import { announcementsStore } from "@/mocks/announcements";
+import { announcementsStore } from "@/stores/announcements";
 import {
+  busVersionStore,
   lineStationRows,
   lineStationsStore,
-  lines,
+  linesStore,
   stationsStore,
   stopsForStation,
-} from "@/mocks/metro";
-import { operationConfigsStore } from "@/mocks/operations";
-import { activeForPassengers } from "@/pages/notifications/notifications.service";
+} from "@/stores/metro";
+import { operationConfigsStore } from "@/stores/operations";
+import { useBusData } from "@/pages/map/hooks/useBusData";
+import {
+  activeForPassengers,
+  useAnnouncementsData,
+} from "@/pages/notifications/notifications.service";
 
 /** Màu trên bản đồ (Leaflet không đọc được token CSS nên dùng mã màu cố định). */
 export const MAP_COLORS = {
@@ -25,12 +32,22 @@ export const MAP_COLORS = {
 const SIM_INTERVAL_MS = 5000;
 
 export function useMap() {
-  const [visibleLines, setVisibleLines] = useState(["L1", "L2"]);
+  const { hasPermission } = useAuth();
+  useOperationConfigsData();
+  useAnnouncementsData(
+    hasPermission("ANNOUNCEMENT_MANAGE") || hasPermission("ANNOUNCEMENT_APPROVE"),
+  );
+  const lines = linesStore.use();
+  const [hiddenLines, setHiddenLines] = useState<string[]>([]);
+  const visibleLines = lines.map((l) => l.id).filter((id) => !hiddenLines.includes(id));
   const [showBus, setShowBus] = useState(false);
   const [busRoute, setBusRoute] = useState<string | null>(null);
   const [showTrains, setShowTrains] = useState(true);
   const [selectedStationId, setSelectedStationId] = useState<string | null>(null);
   const stations = stationsStore.use();
+  const bus = useBusData(stations, showBus);
+  // Vẽ lại khi nạp xong dữ liệu xe buýt (bản đồ đọc thẳng mảng `busStops`).
+  busVersionStore.use();
   const rows = lineStationsStore.use();
   const announcements = announcementsStore.use();
   const configs = operationConfigsStore.use();
@@ -41,7 +58,9 @@ export function useMap() {
   }, []);
 
   const active = activeForPassengers(announcements, now);
-  const config = configs.find((c) => c.lineId === "L1" && c.status === "ACTIVE");
+  const activeConfigs = configs.filter((c) => c.status === "ACTIVE");
+  // Cấu hình hiển thị ở thẻ số liệu: tuyến đầu tiên đang có cấu hình áp dụng.
+  const config = lines.map((l) => activeConfigs.find((c) => c.lineId === l.id)).find((c) => !!c);
 
   const stationStates = useMemo(() => {
     const out: Record<string, StationMarkerState> = {};
@@ -69,22 +88,27 @@ export function useMap() {
     return out;
   }, [stations, active]);
 
-  const trains = useMemo(
+  const simulated = useMemo(
     () =>
-      config && showTrains
-        ? simulateTrains(config, lineStationRows("L1", rows), stations, now).map((t) => ({
-            id: t.id,
-            lat: t.lat,
-            lng: t.lng,
-            label: `Chuyến ${t.departedAt} → ${t.direction === "FORWARD" ? "Suối Tiên" : "Bến Thành"}${
-              t.atStationId
-                ? ` · đang dừng ga ${stationName(t.atStationId)}`
-                : ` · sắp tới ga ${stationName(t.nextStationId)}`
-            }`,
-          }))
-        : [],
-    [config, showTrains, rows, stations, now],
+      activeConfigs.flatMap((c) => {
+        const path = lineStationRows(c.lineId, rows);
+        const first = stationName(path[0]?.stationId);
+        const last = stationName(path.at(-1)?.stationId);
+        return simulateTrains(c, path, stations, now).map((t) => ({
+          id: `${c.lineId}-${t.id}`,
+          lat: t.lat,
+          lng: t.lng,
+          label: `Chuyến ${t.departedAt} → ${t.direction === "FORWARD" ? last : first}${
+            t.atStationId
+              ? ` · đang dừng ga ${stationName(t.atStationId)}`
+              : ` · sắp tới ga ${stationName(t.nextStationId)}`
+          }`,
+        }));
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [configs, rows, stations, now],
   );
+  const trains = showTrains ? simulated : [];
 
   const station = stations.find((s) => s.id === selectedStationId);
 
@@ -92,7 +116,9 @@ export function useMap() {
     lines,
     visibleLines,
     setLineVisibility: (lineId: string, visible: boolean) =>
-      setVisibleLines((cur) => (visible ? [...cur, lineId] : cur.filter((l) => l !== lineId))),
+      setHiddenLines((cur) => (visible ? cur.filter((l) => l !== lineId) : [...cur, lineId])),
+    busLoading: bus.loading,
+    busError: bus.error,
     showBus,
     setShowBus,
     busRoute,
@@ -116,9 +142,7 @@ export function useMap() {
       activeStations: stations.filter((s) => s.status === "ACTIVE").length,
       maintenance: stations.filter((s) => s.status === "MAINTENANCE").length,
       announcements: active.length,
-      trainsRunning: config
-        ? simulateTrains(config, lineStationRows("L1", rows), stations, now).length
-        : 0,
+      trainsRunning: simulated.length,
     },
   };
 }

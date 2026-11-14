@@ -1,27 +1,33 @@
-import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { money } from "@/components/shared";
+import type { ReportRow } from "@/lib/api";
 import { chartTooltipStyle } from "@/lib/chart";
-import { revenue7d } from "@/mocks/metro";
+import { shortDay } from "@/pages/reports/reports.service";
+
+const compact = new Intl.NumberFormat("vi-VN", { notation: "compact" });
 
 // Tách riêng để tải thư viện biểu đồ sau cùng, không làm chậm phần còn lại của trang tổng quan.
-export default function RevenueLines() {
+export default function RevenueBars({ rows }: { rows: ReportRow[] }) {
+  const data = rows.map((r) => ({ day: shortDay(r.label), amount: r.amountVnd ?? 0 }));
   return (
     <ResponsiveContainer>
-      <LineChart data={revenue7d}>
+      <BarChart data={data}>
         <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
         <XAxis dataKey="day" tickLine={false} axisLine={false} fontSize={12} />
-        <YAxis tickLine={false} axisLine={false} fontSize={12} width={40} />
-        <Tooltip contentStyle={chartTooltipStyle} />
-        <Line dataKey="ve" name="Vé" stroke="var(--chart-1)" strokeWidth={2.5} dot={false} />
-        <Line dataKey="guiXe" name="Gửi xe" stroke="var(--chart-2)" strokeWidth={2.5} dot={false} />
-      </LineChart>
+        <YAxis
+          tickLine={false}
+          axisLine={false}
+          fontSize={12}
+          width={48}
+          tickFormatter={(v) => compact.format(v)}
+        />
+        <Tooltip
+          contentStyle={chartTooltipStyle}
+          cursor={{ fill: "var(--muted)" }}
+          formatter={(v) => money(Number(v))}
+        />
+        <Bar dataKey="amount" name="Doanh thu" fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
+      </BarChart>
     </ResponsiveContainer>
   );
 }

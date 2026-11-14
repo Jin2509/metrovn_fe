@@ -1,119 +1,193 @@
-import { Leaf, Sprout, TreePine, Trees, type LucideIcon } from "lucide-react";
-import { DataTable, Section } from "@/components/shared";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
+import { useState } from "react";
+import { toast } from "sonner";
+import { DataTable, LoadState, Section } from "@/components/shared";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { GreenTier, GreenTierId } from "@/mocks/green";
-import { loyaltyMembers } from "@/mocks/loyalty";
-import { RuleList } from "@/pages/green/components/fields";
-import { maskEmail, TOP_MEMBERS, topMembers } from "@/pages/green/green.service";
-import type { GreenConfigForm } from "@/pages/green/hooks/useGreenConfig";
+import { Label } from "@/components/ui/label";
+import {
+  apiErrorMessage,
+  membershipTiersApi,
+  systemParamsApi,
+  type MembershipTier,
+} from "@/lib/api";
+import { greenKeys, validateTiers } from "@/pages/green/green.service";
+import {
+  SYSTEM_PARAMS_KEY,
+  paramLabel,
+  paramUnit,
+} from "@/pages/systemparams/systemparams.service";
 
-export const TIER_ICONS: Record<GreenTierId, LucideIcon> = {
-  SEED: Sprout,
-  SPROUT: Leaf,
-  TREE: TreePine,
-  FOREST: Trees,
-};
+/** Hạng thành viên CPoint (bảng `membership_tier`) và các tham số tích điểm. */
+export function TierPanel({ canEdit }: { canEdit: boolean }) {
+  const queryClient = useQueryClient();
+  const tiers = useQuery({
+    queryKey: greenKeys.tiers,
+    queryFn: membershipTiersApi.list,
+    retry: false,
+  });
+  const params = useQuery({
+    queryKey: SYSTEM_PARAMS_KEY,
+    queryFn: systemParamsApi.list,
+    enabled: canEdit,
+    retry: false,
+  });
+  const [editing, setEditing] = useState<Record<string, MembershipTier>>({});
+  const [pending, setPending] = useState("");
+  const list = [...(tiers.data ?? [])].sort((a, b) => a.minPoints - b.minPoints);
+  const cpoint = (params.data ?? []).filter((p) => p.key.startsWith("CPOINT_"));
 
-function TierName({ tier }: { tier: GreenTier }) {
-  const Icon = TIER_ICONS[tier.id];
+  const save = async (code: string) => {
+    const draft = editing[code];
+    const next = list.map((t) => (t.code === code ? draft : t));
+    const errors = validateTiers(next);
+    if (errors.length) return void toast.error(errors[0]);
+    setPending(code);
+    try {
+      await membershipTiersApi.update(code, {
+        name: draft.name.trim(),
+        minPoints: draft.minPoints,
+      });
+      toast.success(`Đã lưu hạng ${draft.name}`);
+      setEditing(({ [code]: _done, ...rest }) => rest);
+      await queryClient.invalidateQueries({ queryKey: greenKeys.tiers });
+    } catch (e) {
+      toast.error(apiErrorMessage(e));
+    } finally {
+      setPending("");
+    }
+  };
+
   return (
-    <span className="flex items-center gap-2 font-medium">
-      <Icon className="h-4 w-4 text-success" />
-      {tier.name}
-    </span>
-  );
-}
-
-/** Tab "Nâng hạng": bốn cấp theo CPoint tích lũy và các thành viên nhiều điểm nhất. */
-export function TierPanel({ form }: { form: GreenConfigForm }) {
-  const { config, saved, locked, update } = form;
-  const editTier = (id: GreenTierId, patch: Partial<GreenTier>) =>
-    update({ tiers: config.tiers.map((t) => (t.id === id ? { ...t, ...patch } : t)) });
-
-  return (
-    <div className="grid items-start gap-6 xl:grid-cols-[1fr_1.2fr]">
-      <div className="min-w-0 space-y-6">
-        <Section
-          title="Các cấp thành viên"
-          description="App mobile đang cố định 4 cấp nên chỉ chỉnh mốc và mức giảm."
-        >
-          <DataTable
-            rows={config.tiers}
-            cols={[
-              { h: "Cấp", c: (tier) => <TierName tier={tier} /> },
-              {
-                h: "Mốc CPoint",
-                c: (tier) => (
-                  <Input
-                    type="number"
-                    min={0}
-                    aria-label={`Mốc CPoint của cấp ${tier.name}`}
-                    className="h-8 w-24"
-                    value={tier.fromCpoint}
-                    disabled={locked || tier.id === "SEED"}
-                    onChange={(event) =>
-                      editTier(tier.id, { fromCpoint: Number(event.target.value) })
-                    }
-                  />
-                ),
-              },
-              {
-                h: "Giảm (%)",
-                c: (tier) => (
-                  <Input
-                    type="number"
-                    min={0}
-                    max={100}
-                    aria-label={`Mức giảm của cấp ${tier.name}`}
-                    className="h-8 w-20"
-                    value={tier.discountPercent}
-                    disabled={locked}
-                    onChange={(event) =>
-                      editTier(tier.id, { discountPercent: Number(event.target.value) })
-                    }
-                  />
-                ),
-              },
-            ]}
-          />
-        </Section>
-        <Section title="Quy tắc nâng hạng">
-          <RuleList
-            rules={[
-              "Xét theo tổng CPoint tích lũy từ trước đến nay, không reset theo kỳ.",
-              "CPoint không bị trừ khi dùng, nên không tụt cấp vì mua vé.",
-              "Đạt mốc là lên cấp ngay; app chúc mừng một lần cho mỗi lần lên cấp.",
-            ]}
-          />
-        </Section>
-      </div>
+    <div className="grid items-start gap-6 xl:grid-cols-[1fr_360px]">
       <Section
-        title={`Top ${TOP_MEMBERS} thành viên theo CPoint`}
-        description={`Trong tổng số ${loyaltyMembers.length} thành viên, xếp cấp theo thang đang áp dụng.`}
+        title="Hạng thành viên"
+        description="CPoint là điểm tích lũy từ các lần check-in, không bị trừ khi lên hạng."
       >
-        <DataTable
-          rows={topMembers(loyaltyMembers, saved.tiers)}
-          cols={[
-            { h: "Hạng", c: (member) => `#${member.rank}`, className: "w-14" },
-            {
-              h: "Thành viên",
-              c: (member) => (
-                <>
-                  <p className="font-medium">{member.name}</p>
-                  <p className="text-xs text-muted-foreground">{maskEmail(member.email)}</p>
-                </>
-              ),
-            },
-            {
-              h: "CPoint",
-              c: (member) => <b>{member.cpoint.toLocaleString("vi-VN")}</b>,
-              className: "text-right",
-            },
-            { h: "Lượt check-in", c: (member) => member.checkins, className: "text-right" },
-            { h: "Cấp", c: (member) => <TierName tier={member.tier} /> },
-          ]}
+        <LoadState
+          loading={tiers.isPending}
+          error={tiers.error ? apiErrorMessage(tiers.error) : ""}
+          onRetry={() => void tiers.refetch()}
         />
+        {tiers.data && (
+          <DataTable
+            rows={list}
+            rowKey={(t) => t.code}
+            cols={[
+              { h: "Mã", c: (t) => <span className="font-mono text-xs">{t.code}</span> },
+              {
+                h: "Tên hạng",
+                c: (t) =>
+                  editing[t.code] ? (
+                    <>
+                      <Label htmlFor={`tier-name-${t.code}`} className="sr-only">
+                        Tên hạng {t.code}
+                      </Label>
+                      <Input
+                        id={`tier-name-${t.code}`}
+                        className="h-8 w-40"
+                        value={editing[t.code].name}
+                        onChange={(e) =>
+                          setEditing({
+                            ...editing,
+                            [t.code]: { ...editing[t.code], name: e.target.value },
+                          })
+                        }
+                      />
+                    </>
+                  ) : (
+                    <b>{t.name}</b>
+                  ),
+              },
+              {
+                h: "Từ CPoint",
+                className: "text-right",
+                c: (t) =>
+                  editing[t.code] ? (
+                    <>
+                      <Label htmlFor={`tier-min-${t.code}`} className="sr-only">
+                        Mốc CPoint của hạng {t.code}
+                      </Label>
+                      <Input
+                        id={`tier-min-${t.code}`}
+                        type="number"
+                        min={0}
+                        className="ml-auto h-8 w-28 text-right"
+                        value={editing[t.code].minPoints}
+                        onChange={(e) =>
+                          setEditing({
+                            ...editing,
+                            [t.code]: { ...editing[t.code], minPoints: Number(e.target.value) },
+                          })
+                        }
+                      />
+                    </>
+                  ) : (
+                    t.minPoints.toLocaleString("vi-VN")
+                  ),
+              },
+              ...(canEdit
+                ? [
+                    {
+                      h: "Thao tác",
+                      className: "text-right",
+                      c: (t: MembershipTier) =>
+                        editing[t.code] ? (
+                          <span className="flex justify-end gap-1.5">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setEditing(({ [t.code]: _x, ...rest }) => rest)}
+                            >
+                              Hủy
+                            </Button>
+                            <Button
+                              size="sm"
+                              disabled={!!pending}
+                              onClick={() => void save(t.code)}
+                            >
+                              Lưu
+                            </Button>
+                          </span>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setEditing({ ...editing, [t.code]: { ...t } })}
+                          >
+                            Sửa
+                          </Button>
+                        ),
+                    },
+                  ]
+                : []),
+            ]}
+          />
+        )}
       </Section>
+      {canEdit && (
+        <Section
+          title="Tích điểm CPoint"
+          action={
+            <Link to="/system-params" className="text-sm text-primary hover:underline">
+              Sửa ở Tham số hệ thống
+            </Link>
+          }
+        >
+          <LoadState error={params.error ? apiErrorMessage(params.error) : ""} />
+          <dl className="divide-y text-sm">
+            {cpoint.map((p) => (
+              <div key={p.key} className="flex justify-between gap-4 py-2 first:pt-0 last:pb-0">
+                <dt className="text-muted-foreground">{paramLabel(p)}</dt>
+                <dd className="font-medium">
+                  {Number(p.value).toLocaleString("vi-VN")} {paramUnit(p)}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </Section>
+      )}
     </div>
   );
 }

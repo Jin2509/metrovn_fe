@@ -4,6 +4,7 @@ import { AppShell } from "@/components/app-shell";
 import { LazyMap } from "@/components/lazy-map";
 import { Section, StatCard } from "@/components/shared";
 import { Card, CardContent } from "@/components/ui/card";
+import { fmtInstant } from "@/lib/query-sync";
 import { BusRouteList } from "@/pages/map/components/BusRouteList";
 import { MapControls } from "@/pages/map/components/MapControls";
 import { SelectedStationCard } from "@/pages/map/components/SelectedStationCard";
@@ -16,7 +17,7 @@ function SystemMapPanel() {
   const navigate = useNavigate();
   const announce = (lineId: string, stationId: string) => {
     draftPrefillStore.set(() => ({
-      draft: { lineId, stationId, severity: "WARNING", audience: "PASSENGER" },
+      draft: { scope: "STATION", lineId, stationId, severity: "WARNING" },
     }));
     navigate({ to: "/notifications" });
   };
@@ -93,7 +94,9 @@ function SystemMapPanel() {
                       {SEVERITY_LABELS[a.severity]} · {scopeLabel(a)}
                     </p>
                     <p className="font-medium">{a.title}</p>
-                    {a.endsAt && <p className="text-xs text-muted-foreground">Đến {a.endsAt}</p>}
+                    {a.endsAt && (
+                      <p className="text-xs text-muted-foreground">Đến {fmtInstant(a.endsAt)}</p>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -110,7 +113,14 @@ function SystemMapPanel() {
             showTrains={m.showTrains}
             onShowTrainsChange={m.setShowTrains}
           />
-          {m.showBus && <BusRouteList selectedRoute={m.busRoute} onSelectRoute={m.setBusRoute} />}
+          {m.showBus && (
+            <BusRouteList
+              loading={m.busLoading}
+              error={m.busError}
+              selectedRoute={m.busRoute}
+              onSelectRoute={m.setBusRoute}
+            />
+          )}
         </div>
       </div>
     </>

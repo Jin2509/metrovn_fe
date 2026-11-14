@@ -6,7 +6,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { approvalLabel, type Approval } from "@/mocks/admin";
+import { useUserNames } from "@/hooks/use-user-names";
+import { fmtInstant } from "@/lib/query-sync";
+import { approvalLabel, type Approval } from "@/stores/admin";
 import { APPROVAL_STATUS_OPTIONS } from "@/pages/approvals/approvals.constants";
 import type { ApprovalStatusFilter } from "@/pages/approvals/approvals.types";
 
@@ -25,6 +27,7 @@ export function ApprovalListSection({
   onStatusChange: (status: ApprovalStatusFilter) => void;
   onSelect: (approval: Approval) => void;
 }) {
+  const nameOf = useUserNames();
   return (
     <Section
       title={title}
@@ -49,13 +52,15 @@ export function ApprovalListSection({
     >
       <DataTable
         rows={rows}
+        rowKey={(approval) => approval.id}
+        rowActionLabel={(approval) => `Xem đề xuất ${approval.title}`}
         onRow={onSelect}
         empty="Không có yêu cầu nào"
         cols={[
           { h: "Loại", c: (approval) => approvalLabel[approval.type] },
           { h: "Nội dung", c: (approval) => <b>{approval.title}</b> },
-          { h: "Người gửi", c: (approval) => approval.by },
-          { h: "Thời điểm", c: (approval) => approval.at },
+          { h: "Người gửi", c: (approval) => nameOf(approval.by) },
+          { h: "Thời điểm", c: (approval) => fmtInstant(approval.at) },
           { h: "Trạng thái", c: (approval) => <StatusBadge s={approval.status} /> },
         ]}
       />

@@ -1,5 +1,5 @@
 import { apiRequest } from "./client";
-import type { MeResponse } from "./types";
+import type { MeResponse, MyAuthEvent, Page, PageQuery } from "./types";
 
 // /api/me: cần token, không cần quyền riêng.
 export const meApi = {
@@ -15,4 +15,9 @@ export const meApi = {
   /** Thành công: mọi thiết bị, kể cả thiết bị hiện tại, phải đăng nhập lại. */
   changePassword: (body: { currentPassword: string; newPassword: string }) =>
     apiRequest("/api/me/password", { method: "PUT", body }),
+  /** Bật/tắt xác thực 2 bước khi đăng nhập. */
+  setTwoFactor: (body: { enabled: boolean; currentPassword: string }) =>
+    apiRequest<MeResponse>("/api/me/two-factor", { method: "PUT", body }),
+  authEvents: (query: PageQuery = {}) =>
+    apiRequest<Page<MyAuthEvent>>("/api/me/auth-events", { query }),
 };

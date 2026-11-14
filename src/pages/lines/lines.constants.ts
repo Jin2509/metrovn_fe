@@ -1,4 +1,4 @@
-import { STRUCTURE_LABEL } from "@/mocks/line-structure";
+import { STRUCTURE_LABEL } from "@/stores/line-structure";
 import type { SegmentStructure } from "@/pages/lines/lines.types";
 
 /** Góc nhìn dựng sẵn của mô hình 3D (độ). */

@@ -1,3 +1,5 @@
+import { FieldError } from "@/components/form-field";
+import { fieldErrorProps, useFocusFirstInvalid } from "@/components/form-field.utils";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -16,14 +18,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import type { FaqCategory } from "@/mocks/chatbot";
+import type { FaqCategory } from "@/stores/chatbot";
 import { FAQ_CATEGORY_LABELS } from "@/pages/chatbot/chatbot.constants";
 import type { FaqEditor } from "@/pages/chatbot/hooks/useFaqEditor";
 
 export function FaqFormDialog({ editor }: { editor: FaqEditor }) {
-  const { open, setOpen, editing, draft: d, setDraft, errors, submit } = editor;
+  const { open, setOpen, editing, draft: d, setDraft, errors, submit, pending } = editor;
+  const { ref, focusFirstInvalid } = useFocusFirstInvalid<HTMLDivElement>();
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="sm:max-w-xl">
@@ -34,15 +36,16 @@ export function FaqFormDialog({ editor }: { editor: FaqEditor }) {
             toàn văn).
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4">
+        <div ref={ref} className="space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="faq-q">Câu hỏi</Label>
             <Input
               id="faq-q"
               value={d.question}
               onChange={(e) => setDraft({ ...d, question: e.target.value })}
+              {...fieldErrorProps("faq-q", errors.question)}
             />
-            {errors.question && <p className="text-xs text-destructive">{errors.question}</p>}
+            <FieldError fieldId="faq-q">{errors.question}</FieldError>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="faq-a">Câu trả lời</Label>
@@ -51,17 +54,18 @@ export function FaqFormDialog({ editor }: { editor: FaqEditor }) {
               rows={5}
               value={d.answer}
               onChange={(e) => setDraft({ ...d, answer: e.target.value })}
+              {...fieldErrorProps("faq-a", errors.answer)}
             />
-            {errors.answer && <p className="text-xs text-destructive">{errors.answer}</p>}
+            <FieldError fieldId="faq-a">{errors.answer}</FieldError>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label>Danh mục</Label>
+              <Label htmlFor="faq-category">Danh mục</Label>
               <Select
                 value={d.category}
                 onValueChange={(v) => setDraft({ ...d, category: v as FaqCategory })}
               >
-                <SelectTrigger>
+                <SelectTrigger id="faq-category">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -83,21 +87,17 @@ export function FaqFormDialog({ editor }: { editor: FaqEditor }) {
               />
             </div>
           </div>
-          <label className="flex items-center justify-between gap-4 rounded-lg border p-3">
-            <span>
-              <span className="block text-sm font-medium">Đang sử dụng</span>
-              <span className="block text-xs text-muted-foreground">
-                Tắt để chatbot tạm không dùng câu trả lời này.
-              </span>
-            </span>
-            <Switch checked={d.active} onCheckedChange={(active) => setDraft({ ...d, active })} />
-          </label>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>
             Hủy
           </Button>
-          <Button onClick={submit}>{editing ? "Lưu thay đổi" : "Thêm"}</Button>
+          <Button
+            disabled={pending}
+            onClick={() => void submit().then((ok) => !ok && focusFirstInvalid())}
+          >
+            {pending ? "Đang lưu…" : editing ? "Lưu thay đổi" : "Thêm"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

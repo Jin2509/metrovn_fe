@@ -1,5 +1,5 @@
-import { parkingPricesStore, ticketTypesStore } from "@/mocks/admin";
-import { operationConfigsStore } from "@/mocks/operations";
+import { parkingPricesStore, ticketTypesStore } from "@/stores/admin";
+import { operationConfigsStore } from "@/stores/operations";
 
 export type TicketType = ReturnType<typeof ticketTypesStore.use>[number];
 export type ParkingPrice = ReturnType<typeof parkingPricesStore.use>[number];

@@ -25,7 +25,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useAuth } from "@/lib/auth";
 import { chartTooltipStyle } from "@/lib/chart";
 import { cn } from "@/lib/utils";
-import type { ChatChannel } from "@/mocks/chatbot";
+import type { ChatChannel } from "@/stores/chatbot";
 import { CHANNEL_LABELS, INTENT_INFO, RESPONSE_LIMIT_MS } from "@/pages/chatbot/chatbot.constants";
 import { markQuestion, percent } from "@/pages/chatbot/chatbot.service";
 import type { ChannelFilter, Period } from "@/pages/chatbot/chatbot.stats";

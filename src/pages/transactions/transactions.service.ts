@@ -1,39 +1,30 @@
-import { getActorName } from "@/lib/auth/session.store";
-import { logAction, txnStore, type Txn } from "@/mocks/admin";
+import type { TransactionQuery } from "@/lib/api";
 import type { TransactionFilters } from "@/pages/transactions/transactions.types";
 
-export function filterTransactions(transactions: Txn[], filters: TransactionFilters) {
-  return transactions.filter(
-    (transaction) =>
-      (filters.status === "ALL" || transaction.status === filters.status) &&
-      (filters.method === "ALL" || transaction.method === filters.method) &&
-      (filters.gateway === "ALL" || transaction.gateway === filters.gateway) &&
-      (filters.rec === "ALL" || String(transaction.reconciled) === filters.rec) &&
-      (!filters.from || transaction.at >= filters.from) &&
-      (!filters.to || transaction.at.slice(0, 10) <= filters.to) &&
-      (transaction.id + transaction.orderId).toLowerCase().includes(filters.q.toLowerCase()),
-  );
+export const TRANSACTIONS_KEY = ["payments", "transactions"] as const;
+export const REFUNDS_KEY = ["payments", "refund-pending"] as const;
+export const PAGE_SIZE = 20;
+
+/** Bộ lọc trên màn hình → tham số của `GET /admin/transactions`. */
+export function toTransactionQuery(filters: TransactionFilters, page: number): TransactionQuery {
+  return {
+    page,
+    size: PAGE_SIZE,
+    from: filters.from || undefined,
+    to: filters.to || undefined,
+    status: filters.status === "ALL" ? undefined : filters.status,
+    purpose: filters.purpose === "ALL" ? undefined : filters.purpose,
+    providerRef: filters.q.trim() || undefined,
+  };
 }
 
-/**
- * Chỉ đối soát được giao dịch thành công, chưa đối soát và không thuộc kỳ đã chốt sổ.
- * `closedMonths` dạng "MM/YYYY", khớp `periodsStore`.
- */
-export function isReconcilable(transaction: Txn, closedMonths: string[]) {
-  const month = `${transaction.at.slice(5, 7)}/${transaction.at.slice(0, 4)}`;
-  return (
-    transaction.status === "SUCCESS" && !transaction.reconciled && !closedMonths.includes(month)
-  );
-}
+/** Khoảng ngày bị đảo ngược thì không gửi lên backend. */
+export const invalidRange = (filters: Pick<TransactionFilters, "from" | "to">) =>
+  !!filters.from && !!filters.to && filters.from > filters.to;
 
-export function reconcileTransactions(ids: string[]) {
-  const reconciledBy = `${getActorName()} · ${new Date().toLocaleString("vi-VN")}`;
-  txnStore.set((transactions) =>
-    transactions.map((transaction) =>
-      ids.includes(transaction.id)
-        ? { ...transaction, reconciled: true, reconciledBy }
-        : transaction,
-    ),
-  );
-  logAction("Đối soát", `${ids.length} giao dịch`);
+/** Ngày yyyy-MM-dd theo giờ máy → mốc Instant đầu ngày / cuối ngày cho API đối soát. */
+export function dayRange(from: string, to: string) {
+  const start = new Date(`${from}T00:00:00`);
+  const end = new Date(`${to}T23:59:59.999`);
+  return { from: start.toISOString(), to: end.toISOString() };
 }

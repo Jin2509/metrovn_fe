@@ -1,4 +1,4 @@
-import type { TrackStructure } from "@/mocks/line-structure";
+import type { TrackStructure } from "@/stores/line-structure";
 
 /** Kết cấu một đoạn ray: giữ nguyên kết cấu của 2 ga, hoặc đoạn dốc chuyển tiếp (cửa hầm/ram dốc). */
 export type SegmentStructure = TrackStructure | "TRANSITION";

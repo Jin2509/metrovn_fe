@@ -8,7 +8,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import type { ChatbotMessage, ChatbotSession } from "@/mocks/chatbot";
+import type { ChatbotMessage, ChatbotSession } from "@/stores/chatbot";
 import {
   CHANNEL_LABELS,
   INTENT_INFO,

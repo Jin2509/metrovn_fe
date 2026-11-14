@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { FieldError } from "@/components/form-field";
+import { fieldErrorProps } from "@/components/form-field.utils";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -28,6 +30,7 @@ export function UserPasswordResetDialog({
 }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setPassword("");
@@ -46,13 +49,16 @@ export function UserPasswordResetDialog({
         <div className="space-y-1.5">
           <Label htmlFor="reset-password">Mật khẩu mới</Label>
           <Input
+            ref={inputRef}
             id="reset-password"
             type="password"
             autoComplete="new-password"
+            required
             value={password}
             onChange={(event) => setPassword(event.target.value)}
+            {...fieldErrorProps("reset-password", error)}
           />
-          {error && <p className="text-xs text-destructive">{error}</p>}
+          <FieldError fieldId="reset-password">{error}</FieldError>
         </div>
         <AlertDialogFooter>
           <AlertDialogCancel>Hủy</AlertDialogCancel>
@@ -60,7 +66,10 @@ export function UserPasswordResetDialog({
             disabled={pending}
             onClick={() => {
               if (isValidNewPassword(password)) onConfirm(password);
-              else setError("Mật khẩu từ 8 ký tự, tối đa 72 byte, không được toàn khoảng trắng");
+              else {
+                setError("Mật khẩu từ 8 ký tự, tối đa 72 byte, không được toàn khoảng trắng");
+                inputRef.current?.focus();
+              }
             }}
           >
             Xác nhận

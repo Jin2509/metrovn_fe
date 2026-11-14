@@ -1,3 +1,5 @@
+import { FieldError } from "@/components/form-field";
+import { fieldErrorProps, useFocusFirstInvalid } from "@/components/form-field.utils";
 import { Section } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,13 +16,17 @@ const FIELDS: { key: keyof PasswordDraft; label: string; autoComplete: string }[
 
 export function PasswordSection() {
   const { draft, setDraft, errors, pending, submit } = usePasswordChange();
+  const { ref, focusFirstInvalid } = useFocusFirstInvalid<HTMLFormElement>();
   return (
     <Section title="Đổi mật khẩu" description="Nên đổi định kỳ 90 ngày một lần">
       <form
+        ref={ref}
+        noValidate
         className="space-y-4"
         onSubmit={(e) => {
           e.preventDefault();
           submit();
+          focusFirstInvalid();
         }}
       >
         {FIELDS.map((f) => (
@@ -32,8 +38,10 @@ export function PasswordSection() {
               autoComplete={f.autoComplete}
               value={draft[f.key]}
               onChange={(e) => setDraft({ ...draft, [f.key]: e.target.value })}
+              required
+              {...fieldErrorProps(`pw-${f.key}`, errors[f.key])}
             />
-            {errors[f.key] && <p className="text-xs text-destructive">{errors[f.key]}</p>}
+            <FieldError fieldId={`pw-${f.key}`}>{errors[f.key]}</FieldError>
           </div>
         ))}
         <PasswordRules password={draft.next} />

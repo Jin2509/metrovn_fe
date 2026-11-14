@@ -11,12 +11,12 @@ import {
 
 export function PeriodCloseDialog({
   month,
-  pendingReconciliationCount,
+  pendingRefundCount,
   onClose,
   onConfirm,
 }: {
   month: string | null;
-  pendingReconciliationCount: number;
+  pendingRefundCount: number;
   onClose: () => void;
   onConfirm: () => void;
 }) {
@@ -26,10 +26,11 @@ export function PeriodCloseDialog({
         <AlertDialogHeader>
           <AlertDialogTitle>Chốt kỳ {month}?</AlertDialogTitle>
           <AlertDialogDescription>
-            {pendingReconciliationCount > 0
-              ? `Còn ${pendingReconciliationCount} giao dịch chưa đối soát trong hệ thống. `
+            {pendingRefundCount > 0
+              ? `Còn ${pendingRefundCount} giao dịch chờ hoàn tiền trong hệ thống. `
               : ""}
-            Sau khi chốt sẽ không thể đối soát lại các giao dịch trong kỳ này.
+            Hãy chạy đối soát SePay cho kỳ này trước khi chốt. Trạng thái chốt kỳ hiện chỉ lưu trên
+            trình duyệt này vì backend chưa có API chốt kỳ.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

@@ -1,3 +1,4 @@
+import { AlertCircle } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,17 +26,22 @@ function Field({
   id,
   field,
   value,
+  describedBy,
+  disabled,
   onChange,
 }: {
   id: string;
   field: CatalogField<Draft>;
   value: unknown;
+  disabled?: boolean;
+  /** id của dòng gợi ý bên dưới ô. */
+  describedBy?: string;
   onChange: (value: unknown) => void;
 }) {
   if (field.type === "select")
     return (
-      <Select value={String(value ?? "")} onValueChange={onChange}>
-        <SelectTrigger id={id} aria-label={field.label}>
+      <Select value={String(value ?? "")} onValueChange={onChange} disabled={disabled}>
+        <SelectTrigger id={id} aria-describedby={describedBy}>
           <SelectValue placeholder="Chọn…" />
         </SelectTrigger>
         <SelectContent>
@@ -51,6 +57,8 @@ function Field({
     return (
       <Textarea
         id={id}
+        aria-describedby={describedBy}
+        disabled={disabled}
         value={String(value ?? "")}
         onChange={(event) => onChange(event.target.value)}
       />
@@ -59,6 +67,8 @@ function Field({
   return (
     <Input
       id={id}
+      aria-describedby={describedBy}
+      disabled={disabled}
       type={field.type ?? "text"}
       min={field.min}
       max={field.max}
@@ -72,20 +82,22 @@ function Field({
   );
 }
 
-/** Form thêm/sửa dựng từ khai báo trường của từng đối tượng. Lưu là gửi yêu cầu cho Manager. */
+/** Form thêm/sửa dựng từ khai báo trường của từng đối tượng, lưu thẳng lên backend. */
 export function CatalogFormDialog({
   catalog,
   initial,
   editing,
+  pending = false,
   onClose,
   onSubmit,
 }: {
   catalog: AnyCatalog;
   initial: Draft;
   editing: boolean;
+  pending?: boolean;
   onClose: () => void;
-  /** Trả về thông báo lỗi nếu không gửi được. */
-  onSubmit: (draft: Draft) => string | null;
+  /** Trả về thông báo lỗi nếu không lưu được. */
+  onSubmit: (draft: Draft) => Promise<string | null>;
 }) {
   const [draft, setDraft] = useState<Draft>(initial);
   const [error, setError] = useState("");
@@ -105,7 +117,8 @@ export function CatalogFormDialog({
           className="grid gap-3 sm:grid-cols-2"
           onSubmit={(event) => {
             event.preventDefault();
-            setError(onSubmit(draft) ?? "");
+            if (pending) return;
+            void onSubmit(draft).then((message) => setError(message ?? ""));
           }}
         >
           {fields
@@ -117,25 +130,37 @@ export function CatalogFormDialog({
                   <Label htmlFor={id}>{field.label}</Label>
                   <Field
                     id={id}
+                    describedBy={field.hint ? `${id}-hint` : undefined}
                     field={field}
+                    disabled={editing && field.createOnly}
                     value={draft[field.key]}
                     onChange={(value) => setDraft({ ...draft, [field.key]: value })}
                   />
-                  {field.hint && <p className="text-xs text-muted-foreground">{field.hint}</p>}
+                  {field.hint && (
+                    <p id={`${id}-hint`} className="text-xs text-muted-foreground">
+                      {field.hint}
+                    </p>
+                  )}
                 </div>
               );
             })}
         </form>
-        {error && <p className="text-sm text-destructive">{error}</p>}
-        <p className="text-xs text-muted-foreground">
-          Thay đổi chỉ có hiệu lực sau khi Manager phê duyệt.
-        </p>
+        {/* Lỗi chung của cả form, hiện ngay sau khi bấm gửi nên đọc luôn. */}
+        <div role="alert">
+          {error && (
+            <p className="flex items-start gap-1.5 text-sm text-destructive">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+              <span className="sr-only">Lỗi: </span>
+              {error}
+            </p>
+          )}
+        </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
             Hủy
           </Button>
-          <Button type="submit" form="catalog-form">
-            Gửi duyệt
+          <Button type="submit" form="catalog-form" disabled={pending}>
+            {pending ? "Đang lưu…" : "Lưu"}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -1,8 +1,14 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ticketPricesApi, type TicketPriceResponse } from "@/lib/api";
 import type { Role } from "@/lib/auth";
 import { authStore } from "@/lib/auth/session.store";
-import { approvalsStore, submitApproval } from "@/mocks/admin";
-import { activeWorkRequestStore, threadsStore, workRequestsStore } from "@/mocks/requests";
+import { approvalsStore, type Approval } from "@/stores/admin";
+import {
+  activeWorkRequestStore,
+  approvalLinksStore,
+  threadsStore,
+  workRequestsStore,
+} from "@/stores/requests";
 import { applyApprovalDecision } from "@/pages/approvals/approvals.service";
 import {
   askForInfo,
@@ -11,6 +17,7 @@ import {
   createWorkRequest,
   declineWork,
   inboxCount,
+  linkToActiveWork,
   postMessage,
   reopenWork,
   resolveWork,
@@ -50,6 +57,8 @@ afterEach(() => {
   workRequestsStore.set(() => seed.requests);
   threadsStore.set(() => seed.threads);
   activeWorkRequestStore.set(() => null);
+  approvalLinksStore.set(() => ({}));
+  vi.restoreAllMocks();
   authStore.set(() => ({ status: "anonymous", user: null }) as never);
 });
 
@@ -123,53 +132,68 @@ describe("Manager gửi, Admin xử lý", () => {
 });
 
 describe("Gắn đề xuất thay đổi vào yêu cầu", () => {
+  /** Admin gửi duyệt một giá vé trên backend khi đang làm yêu cầu; Hộp phê duyệt tải lại mục đó. */
   const startOnScreen = () => {
     const id = newRequest();
     asAdmin();
     startWork(id);
     expect(beginWorkOnScreen(id)).toBeNull();
-    const approvalId = submitApproval("PARKING_PRICE", "Giá xe máy / lượt", [
-      { field: "Giá", old: "5.000 VND", new: "6.000 VND" },
-    ]);
-    return {
-      id,
-      approvalId,
-      approval: () => approvalsStore.get().find((a) => a.id === approvalId)!,
+    const approvalId = "TICKET_PRICE:5";
+    linkToActiveWork(approvalId, "Giá vé Vé ngày");
+    const approval: Approval = {
+      id: approvalId,
+      type: "TICKET_PRICE",
+      sourceId: 5,
+      title: "Giá vé Vé ngày",
+      by: "Nguyễn Văn An",
+      at: "2026-11-10T02:00:00Z",
+      status: "PENDING",
+      changes: [{ field: "Giá", old: "40.000 VND", new: "45.000 VND" }],
+      workRequestId: approvalLinksStore.get()[approvalId],
     };
+    approvalsStore.set((list) => [approval, ...list]);
+    return { id, approval };
   };
+  const price = {} as TicketPriceResponse;
 
   it("đề xuất gửi khi đang xử lý tự gắn vào yêu cầu; chờ duyệt thì yêu cầu chờ Manager", () => {
     const { id, approval } = startOnScreen();
-    expect(approval().workRequestId).toBe(id);
-    expect(threadOf(id).at(-1)?.text).toMatch(/đã gửi đề xuất “Giá xe máy \/ lượt”/);
+    expect(approval.workRequestId).toBe(id);
+    expect(threadOf(id).at(-1)?.text).toMatch(/đã gửi đề xuất “Giá vé Vé ngày”/);
     expect(waitingOn(find(id), approvalsStore.get())).toBe("MANAGER");
     expect(resolveWork(id, "xong")).toMatch(/tự hoàn tất/);
   });
 
-  it("Manager duyệt đề xuất ⇒ yêu cầu hoàn tất và thôi gắn", () => {
+  it("Manager duyệt đề xuất ⇒ gọi API duyệt giá, yêu cầu hoàn tất và thôi gắn", async () => {
+    const approve = vi.spyOn(ticketPricesApi, "approve").mockResolvedValue(price);
     const { id, approval } = startOnScreen();
     asManager();
-    expect(applyApprovalDecision(approval(), "APPROVED")).toBeNull();
+    await applyApprovalDecision(approval, "APPROVED");
+    expect(approve).toHaveBeenCalledWith(5);
     expect(find(id).status).toBe("DONE");
     expect(activeWorkRequestStore.get()).toBeNull();
   });
 
-  it("Manager từ chối đề xuất ⇒ yêu cầu quay lại Admin", () => {
+  it("Manager từ chối đề xuất ⇒ gửi lý do lên backend, yêu cầu quay lại Admin", async () => {
+    const reject = vi.spyOn(ticketPricesApi, "reject").mockResolvedValue(price);
     const { id, approval } = startOnScreen();
     asManager();
-    applyApprovalDecision(approval(), "REJECTED", "Giá quá cao");
+    await applyApprovalDecision(approval, "REJECTED", "Giá quá cao");
+    expect(reject).toHaveBeenCalledWith(5, "Giá quá cao");
+    approvalsStore.set((list) =>
+      list.map((a) => (a.id === approval.id ? { ...a, status: "REJECTED" } : a)),
+    );
     expect(find(id).status).toBe("IN_PROGRESS");
     expect(waitingOn(find(id), approvalsStore.get())).toBe("ADMIN");
     expect(threadOf(id).at(-1)?.text).toMatch(/bị từ chối: Giá quá cao/);
   });
 
-  it("không ai tự duyệt đề xuất của mình, và không quyết định lại đề xuất đã xong", () => {
-    const { approval } = startOnScreen();
-    expect(applyApprovalDecision(approval(), "APPROVED")).toMatch(/chính mình/);
+  it("backend từ chối thao tác thì yêu cầu giữ nguyên", async () => {
+    vi.spyOn(ticketPricesApi, "approve").mockRejectedValue(new Error("403"));
+    const { id, approval } = startOnScreen();
     asManager();
-    const stale = approval();
-    applyApprovalDecision(stale, "APPROVED");
-    expect(applyApprovalDecision(stale, "REJECTED", "đổi ý")).toMatch(/quyết định trước đó/);
+    await expect(applyApprovalDecision(approval, "APPROVED")).rejects.toThrow();
+    expect(find(id).status).toBe("IN_PROGRESS");
   });
 });
 

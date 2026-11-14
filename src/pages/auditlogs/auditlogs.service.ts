@@ -15,6 +15,9 @@ export const AUDIT_ACTION_LABELS: Record<AuthEventType, string> = {
   ROLES_CHANGED: "Đổi vai trò",
   ACCOUNT_LOCKED: "Khoá tài khoản",
   ACCOUNT_ACTIVATED: "Mở khoá tài khoản",
+  TWO_FACTOR_ENABLED: "Bật xác thực 2 bước",
+  TWO_FACTOR_DISABLED: "Tắt xác thực 2 bước",
+  TWO_FACTOR_FAILED: "Nhập sai mã xác thực 2 bước",
 };
 
 export const AUDIT_ACTIONS = Object.keys(AUDIT_ACTION_LABELS) as AuthEventType[];

@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
+import { FieldError } from "@/components/form-field";
+import { fieldErrorProps, useFocusFirstInvalid } from "@/components/form-field.utils";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -19,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import type { WorkCategory, WorkPriority } from "@/mocks/requests";
+import type { WorkCategory, WorkPriority } from "@/stores/requests";
 import { AttachmentPicker } from "@/pages/approvals/components/RequestAttachments";
 import { WORK_CATEGORY_LABELS, WORK_PRIORITY } from "@/pages/approvals/work-requests.constants";
 import {
@@ -56,6 +58,7 @@ export function WorkRequestFormDialog({
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [files, setFiles] = useState<File[]>([]);
   const [errors, setErrors] = useState<Partial<Record<keyof Draft | "files", string>>>({});
+  const { ref, focusFirstInvalid } = useFocusFirstInvalid<HTMLDivElement>();
 
   const close = () => {
     setDraft(EMPTY);
@@ -72,7 +75,7 @@ export function WorkRequestFormDialog({
       ...(picked.error && { files: picked.error }),
     };
     setErrors(nextErrors);
-    if (Object.keys(nextErrors).length) return;
+    if (Object.keys(nextErrors).length) return focusFirstInvalid();
     const id = createWorkRequest(input);
     toast.success("Đã gửi yêu cầu cho Admin");
     close();
@@ -89,7 +92,7 @@ export function WorkRequestFormDialog({
             hoàn tất khi đề xuất đó được duyệt.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4">
+        <div ref={ref} className="space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="wr-title">Tiêu đề</Label>
             <Input
@@ -97,19 +100,21 @@ export function WorkRequestFormDialog({
               value={draft.title}
               placeholder="vd. Cập nhật giá gửi xe theo bảng giá mới"
               onChange={(event) => setDraft({ ...draft, title: event.target.value })}
+              required
+              {...fieldErrorProps("wr-title", errors.title)}
             />
-            {errors.title && <p className="text-xs text-destructive">{errors.title}</p>}
+            <FieldError fieldId="wr-title">{errors.title}</FieldError>
           </div>
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="space-y-1.5">
-              <Label>Nhóm</Label>
+              <Label htmlFor="wr-category">Nhóm</Label>
               <Select
                 value={draft.category}
                 onValueChange={(category) =>
                   setDraft({ ...draft, category: category as WorkCategory })
                 }
               >
-                <SelectTrigger aria-label="Nhóm">
+                <SelectTrigger id="wr-category">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -122,14 +127,14 @@ export function WorkRequestFormDialog({
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Ưu tiên</Label>
+              <Label htmlFor="wr-priority">Ưu tiên</Label>
               <Select
                 value={draft.priority}
                 onValueChange={(priority) =>
                   setDraft({ ...draft, priority: priority as WorkPriority })
                 }
               >
-                <SelectTrigger aria-label="Ưu tiên">
+                <SelectTrigger id="wr-priority">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -148,8 +153,9 @@ export function WorkRequestFormDialog({
                 type="date"
                 value={draft.dueDate}
                 onChange={(event) => setDraft({ ...draft, dueDate: event.target.value })}
+                {...fieldErrorProps("wr-due", errors.dueDate)}
               />
-              {errors.dueDate && <p className="text-xs text-destructive">{errors.dueDate}</p>}
+              <FieldError fieldId="wr-due">{errors.dueDate}</FieldError>
             </div>
           </div>
           <div className="space-y-1.5">
@@ -160,8 +166,10 @@ export function WorkRequestFormDialog({
               value={draft.description}
               placeholder="Cần làm gì, áp dụng từ khi nào, căn cứ nào…"
               onChange={(event) => setDraft({ ...draft, description: event.target.value })}
+              required
+              {...fieldErrorProps("wr-desc", errors.description)}
             />
-            {errors.description && <p className="text-xs text-destructive">{errors.description}</p>}
+            <FieldError fieldId="wr-desc">{errors.description}</FieldError>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="wr-files">Tệp đính kèm</Label>
@@ -169,7 +177,7 @@ export function WorkRequestFormDialog({
             <p className="text-xs text-muted-foreground">
               PDF, Word, Excel, CSV, ảnh. Tối đa 5 tệp, mỗi tệp 20MB.
             </p>
-            {errors.files && <p className="text-xs text-destructive">{errors.files}</p>}
+            <FieldError fieldId="wr-files">{errors.files}</FieldError>
           </div>
         </div>
         <DialogFooter>

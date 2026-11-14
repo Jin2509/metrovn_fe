@@ -10,8 +10,8 @@ import {
 } from "@/components/ui/select";
 import { ROLE_LABELS, type Role } from "@/lib/auth";
 import { cn } from "@/lib/utils";
-import type { Approval } from "@/mocks/admin";
-import type { WorkRequest } from "@/mocks/requests";
+import type { Approval } from "@/stores/admin";
+import type { WorkRequest } from "@/stores/requests";
 import {
   WORK_CATEGORY_LABELS,
   WORK_FILTER_OPTIONS,
@@ -78,6 +78,8 @@ export function WorkRequestListSection({
     >
       <DataTable
         rows={rows}
+        rowKey={(request) => request.id}
+        rowActionLabel={(request) => `Xem yêu cầu ${request.title}`}
         onRow={onSelect}
         empty="Không có yêu cầu nào"
         cols={[

@@ -13,8 +13,8 @@ import {
   STRUCTURE_LEVEL_M,
   stationStructure,
   type TrackStructure,
-} from "@/mocks/line-structure";
-import type { LineStation, Station } from "@/mocks/metro";
+} from "@/stores/line-structure";
+import type { LineStation, Station } from "@/stores/metro";
 import type {
   Line3DModel,
   Line3DNode,

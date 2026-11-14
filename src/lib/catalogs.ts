@@ -1,31 +1,34 @@
-import type { AnyCatalog, Catalog } from "@/lib/change-requests";
-import { TRAIN_STATUS_LABELS } from "@/lib/operations";
 import {
+  parkingLotsApi,
+  ticketProductsApi,
+  trainsApi,
+  type ParkingLotResponse,
+  type TicketProductResponse,
+  type TrainResponse,
+} from "@/lib/api";
+import type { Catalog } from "@/lib/change-requests";
+import { TRAIN_STATUS_LABELS } from "@/lib/operations";
+import { operationsKeys, toTrain } from "@/lib/operations.queries";
+import {
+  VEHICLE_LABEL,
   parkingLotsStore,
   parkingPricesStore,
   ticketTypesStore,
-  usersStore,
   type ParkingLotRow,
+  type ParkingPriceRow,
   type TicketTypeRow,
-  type User,
-} from "@/mocks/admin";
-import { STUDENT_ONLY_TICKET_ID } from "@/mocks/green";
-import { lines, stationsStore, stations } from "@/mocks/metro";
-import { trainsStore, type Train } from "@/mocks/operations";
-import { studentSchoolsStore, type StudentSchool } from "@/mocks/student-verifications";
+  type VehicleType,
+} from "@/stores/admin";
+import { linesStore, stationsStore } from "@/stores/metro";
+import { trainsStore, type Train } from "@/stores/operations";
 
-// Khai báo các đối tượng nghiệp vụ Admin được thêm/sửa/xóa. Mọi thay đổi đều đi qua Manager.
+// Khai báo các đối tượng nghiệp vụ Admin thêm/sửa/xóa trên bảng. Ghi thẳng lên backend; đổi giá vé
+// thì đi qua bảng giá chờ Manager duyệt (xem `pages/tickets`).
 
-let idSeq = 0;
-/** Phần đuôi mã đối tượng mới, không trùng kể cả khi tạo liên tiếp. */
-const stamp = () => `${Date.now()}-${++idSeq}`;
 const options = (labels: Record<string, string>) =>
   Object.entries(labels).map(([value, label]) => ({ value, label }));
 const same = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
 const money = (value: unknown) => `${Number(value).toLocaleString("vi-VN")} VND`;
-function dropId<T extends { id: string }>({ id: _id, ...rest }: T): Omit<T, "id"> {
-  return rest;
-}
 /** Giá trị đã có ở đối tượng khác thì báo trùng. */
 function taken<T extends { id: string }>(
   all: T[],
@@ -35,164 +38,423 @@ function taken<T extends { id: string }>(
 ) {
   return all.some((row) => row.id !== editingId && same(pick(row), value));
 }
-
-const STATUS_LABELS = { ACTIVE: "Hoạt động", INACTIVE: "Ngừng" };
+const text = (value: unknown) => String(value ?? "").trim();
+const optionalText = (value: unknown) => text(value) || undefined;
+const hhmm = (t: string | null | undefined) => (t ? t.slice(0, 5) : "");
 
 // ---------- Vé ----------
 
-export const ticketTypeCatalog: Catalog<TicketTypeRow> = {
+export const ticketKeys = {
+  products: ["tickets", "products"] as const,
+  prices: ["tickets", "prices"] as const,
+  fares: ["tickets", "fares"] as const,
+};
+
+export const toTicketType = (p: TicketProductResponse): TicketTypeRow => ({
+  id: String(p.id),
+  code: p.code,
+  name: p.name,
+  description: p.description ?? "",
+  durationUnit: p.durationUnit,
+  durationValue: p.durationValue,
+  price: p.priceVnd,
+  maxPeriods: p.maxPeriods,
+  activationWindowDays: p.activationWindowDays,
+  status: p.status,
+  hasSoldTickets: p.hasSoldTickets,
+  version: p.version,
+});
+
+type TicketTypeDraft = Omit<TicketTypeRow, "id" | "hasSoldTickets" | "version">;
+
+export const ticketTypeCatalog: Catalog<TicketTypeRow, TicketTypeDraft, TicketProductResponse[]> = {
   key: "ticketType",
-  type: "TICKET_TYPE",
   noun: "loại vé",
   store: ticketTypesStore,
-  newId: () => `TT${stamp()}`,
   labelOf: (t) => t.name,
-  toDraft: dropId,
+  toDraft: ({ id: _id, hasSoldTickets: _sold, version: _version, ...rest }) => rest,
   empty: () => ({
     code: "",
     name: "",
-    validityHours: 24,
+    description: "",
+    durationUnit: "DAY",
+    durationValue: 1,
     price: 0,
+    maxPeriods: 1,
+    activationWindowDays: 30,
     status: "ACTIVE",
   }),
   fields: [
-    { key: "code", label: "Mã loại vé", required: true, hint: "Viết hoa, ví dụ WEEK" },
+    {
+      key: "code",
+      label: "Mã loại vé",
+      required: true,
+      createOnly: true,
+      hint: "Chữ, số, gạch dưới; không đổi được sau khi tạo",
+    },
     { key: "name", label: "Tên loại vé", required: true },
-    { key: "validityHours", label: "Hiệu lực (giờ)", type: "number", required: true, min: 1 },
-    { key: "price", label: "Giá vé", type: "number", required: true, min: 1, format: money },
+    {
+      key: "durationUnit",
+      label: "Đơn vị thời hạn",
+      type: "select",
+      required: true,
+      options: () => options({ DAY: "Ngày", WEEK: "Tuần", MONTH: "Tháng" }),
+    },
+    { key: "durationValue", label: "Thời hạn", type: "number", required: true, min: 1, max: 12 },
+    {
+      key: "price",
+      label: "Giá vé",
+      type: "number",
+      required: true,
+      min: 1,
+      createOnly: true,
+      format: money,
+      hint: "Đổi giá sau khi tạo: dùng nút Đề xuất giá, chờ Manager duyệt",
+    },
+    {
+      key: "maxPeriods",
+      label: "Số kỳ tối đa mỗi lần mua",
+      type: "number",
+      required: true,
+      min: 1,
+    },
+    {
+      key: "activationWindowDays",
+      label: "Hạn kích hoạt (ngày)",
+      type: "number",
+      required: true,
+      min: 0,
+      hint: "Số ngày được chờ trước lần quẹt đầu tiên",
+    },
     {
       key: "status",
       label: "Trạng thái",
       type: "select",
       required: true,
+      createOnly: true,
       options: () => options({ ACTIVE: "Đang bán", INACTIVE: "Ngừng bán" }),
+      hint: "Sau khi tạo, đổi bằng nút Mở bán / Ngừng bán",
     },
+    { key: "description", label: "Mô tả", type: "textarea" },
   ],
   validate: (d, all, editingId) => {
-    if (!/^[A-Z][A-Z0-9_]{1,29}$/.test(d.code))
-      return "Mã loại vé viết hoa, gồm 2–30 ký tự A-Z, 0-9, _";
+    if (!/^[A-Za-z0-9_]{2,30}$/.test(d.code.trim()))
+      return "Mã loại vé gồm 2–30 ký tự chữ, số hoặc _";
     if (taken(all, editingId, d.code, (t) => t.code)) return "Mã loại vé đã tồn tại";
-    if (taken(all, editingId, d.name, (t) => t.name)) return "Tên loại vé đã tồn tại";
     return null;
   },
   deleteGuard: (t) =>
-    t.id === STUDENT_ONLY_TICKET_ID
-      ? `${t.name} gắn với luồng đặt vé của app nên không xóa được, hãy chuyển sang Ngừng bán`
+    t.hasSoldTickets
+      ? `${t.name} đã có vé bán ra nên không xóa được, hãy chuyển sang Ngừng bán`
       : null,
+  query: {
+    key: ticketKeys.products,
+    fn: ticketProductsApi.all,
+    map: (list) => list.map(toTicketType),
+  },
+  create: (d) =>
+    ticketProductsApi.create({
+      code: text(d.code),
+      name: text(d.name),
+      description: optionalText(d.description),
+      durationUnit: d.durationUnit,
+      durationValue: Number(d.durationValue),
+      priceVnd: Number(d.price),
+      maxPeriods: Number(d.maxPeriods),
+      activationWindowDays: Number(d.activationWindowDays),
+      status: d.status,
+    }),
+  update: (item, d) =>
+    ticketProductsApi.update(Number(item.id), {
+      version: item.version,
+      name: text(d.name),
+      description: text(d.description),
+      durationUnit: d.durationUnit,
+      durationValue: Number(d.durationValue),
+      maxPeriods: Number(d.maxPeriods),
+      activationWindowDays: Number(d.activationWindowDays),
+    }),
+  remove: (item) => ticketProductsApi.remove(Number(item.id)),
+  fieldOfApi: { priceVnd: "price" },
 };
 
 // ---------- Gửi xe ----------
+
+export const parkingKeys = { lots: ["parking", "lots"] as const };
+
+const VEHICLE_FIELD: Record<VehicleType, "bike" | "moto" | "car"> = {
+  BICYCLE: "bike",
+  MOTORBIKE: "moto",
+  CAR: "car",
+};
+
+export function toParkingLot(lot: ParkingLotResponse): ParkingLotRow {
+  const capacity = { bike: 0, moto: 0, car: 0 };
+  let total = 0;
+  let occupied = 0;
+  for (const rate of lot.vehicles) {
+    capacity[VEHICLE_FIELD[rate.vehicleType]] = rate.capacity;
+    total += rate.capacity;
+    occupied += rate.occupied;
+  }
+  return {
+    id: String(lot.id),
+    code: lot.code,
+    name: lot.name,
+    stationId: String(lot.stationId),
+    address: lot.address ?? "",
+    openTime: hhmm(lot.openTime),
+    closeTime: hhmm(lot.closeTime),
+    ...capacity,
+    status: lot.status,
+    used: total ? occupied / total : 0,
+  };
+}
+
+export const toParkingPrices = (lots: ParkingLotResponse[]): ParkingPriceRow[] =>
+  lots.flatMap((lot) =>
+    lot.vehicles.map((rate) => ({
+      id: `${lot.id}:${rate.vehicleType}`,
+      lotId: String(lot.id),
+      lotName: lot.name,
+      vehicleType: rate.vehicleType,
+      capacity: rate.capacity,
+      occupied: rate.occupied,
+      dayPrice: rate.dayPriceVnd,
+      overnightPrice: rate.overnightPriceVnd,
+      monthlyPrice: rate.monthlyPriceVnd,
+      parkAndRideDiscountPercent: rate.parkAndRideDiscountPercent,
+    })),
+  );
 
 const stationOptions = () =>
   stationsStore
     .get()
     .map((station) => ({ value: station.id, label: `${station.code} · ${station.name}` }));
 
-export const parkingLotCatalog: Catalog<ParkingLotRow> = {
+type ParkingLotDraft = Pick<
+  ParkingLotRow,
+  "code" | "name" | "stationId" | "address" | "openTime" | "closeTime" | "status"
+>;
+
+export const parkingLotCatalog: Catalog<ParkingLotRow, ParkingLotDraft, ParkingLotResponse[]> = {
   key: "parkingLot",
-  type: "PARKING_LOT",
   noun: "bãi xe",
   store: parkingLotsStore,
-  newId: () => `PK${stamp()}`,
   labelOf: (l) => l.name,
-  toDraft: dropId,
+  toDraft: (l) => ({
+    code: l.code,
+    name: l.name,
+    stationId: l.stationId,
+    address: l.address,
+    openTime: l.openTime,
+    closeTime: l.closeTime,
+    status: l.status,
+  }),
   empty: () => ({
     code: "",
     name: "",
     stationId: "",
-    bike: 0,
-    moto: 0,
-    car: 0,
+    address: "",
+    openTime: "05:00",
+    closeTime: "23:00",
     status: "ACTIVE",
-    used: 0,
   }),
   fields: [
-    { key: "code", label: "Mã bãi", required: true },
+    { key: "code", label: "Mã bãi", required: true, createOnly: true },
     { key: "name", label: "Tên bãi", required: true },
-    { key: "stationId", label: "Ga", type: "select", required: true, options: stationOptions },
-    { key: "bike", label: "Sức chứa xe đạp", type: "number", required: true, min: 0 },
-    { key: "moto", label: "Sức chứa xe máy", type: "number", required: true, min: 0 },
-    { key: "car", label: "Sức chứa ô tô", type: "number", required: true, min: 0 },
+    {
+      key: "stationId",
+      label: "Ga",
+      type: "select",
+      required: true,
+      createOnly: true,
+      options: stationOptions,
+    },
+    { key: "address", label: "Địa chỉ" },
+    { key: "openTime", label: "Giờ mở cửa", type: "time", required: true },
+    { key: "closeTime", label: "Giờ đóng cửa", type: "time", required: true },
     {
       key: "status",
       label: "Trạng thái",
       type: "select",
       required: true,
-      options: () => options({ ...STATUS_LABELS, MAINTENANCE: "Bảo trì" }),
+      options: () => options({ ACTIVE: "Hoạt động", INACTIVE: "Ngừng", MAINTENANCE: "Bảo trì" }),
     },
   ],
   validate: (d, all, editingId) => {
     if (taken(all, editingId, d.code, (l) => l.code)) return "Mã bãi đã tồn tại";
-    if (!(Number(d.bike) + Number(d.moto) + Number(d.car) > 0))
-      return "Bãi xe phải có sức chứa cho ít nhất một loại xe";
+    if (d.openTime === d.closeTime) return "Giờ mở cửa và giờ đóng cửa phải khác nhau";
     return null;
   },
+  query: {
+    key: parkingKeys.lots,
+    fn: () => parkingLotsApi.list(),
+    map: (l) => l.map(toParkingLot),
+  },
+  create: (d) =>
+    parkingLotsApi.create({
+      stationId: Number(d.stationId),
+      code: text(d.code),
+      name: text(d.name),
+      address: optionalText(d.address),
+      openTime: d.openTime,
+      closeTime: d.closeTime,
+      status: d.status,
+    }),
+  update: (item, d) =>
+    parkingLotsApi.update(Number(item.id), {
+      name: text(d.name),
+      address: text(d.address),
+      openTime: d.openTime,
+      closeTime: d.closeTime,
+      status: d.status,
+    }),
 };
 
-export type ParkingPriceRow = ReturnType<typeof parkingPricesStore.get>[number];
+type ParkingPriceDraft = Pick<
+  ParkingPriceRow,
+  | "lotId"
+  | "vehicleType"
+  | "capacity"
+  | "dayPrice"
+  | "overnightPrice"
+  | "monthlyPrice"
+  | "parkAndRideDiscountPercent"
+>;
 
-export const parkingPriceCatalog: Catalog<ParkingPriceRow> = {
+export const parkingPriceCatalog: Catalog<
+  ParkingPriceRow,
+  ParkingPriceDraft,
+  ParkingLotResponse[]
+> = {
   key: "parkingPrice",
-  type: "PARKING_PRICE",
   noun: "giá gửi xe",
   store: parkingPricesStore,
-  newId: () => `PP${stamp()}`,
-  labelOf: (p) => `${p.vehicle} / ${p.unit}`,
-  toDraft: dropId,
-  empty: () => ({ vehicle: "Xe máy", unit: "Lượt", price: 0 }),
+  labelOf: (p) =>
+    "lotName" in p
+      ? `${VEHICLE_LABEL[p.vehicleType]} · ${p.lotName}`
+      : VEHICLE_LABEL[p.vehicleType],
+  toDraft: (p) => ({
+    lotId: p.lotId,
+    vehicleType: p.vehicleType,
+    capacity: p.capacity,
+    dayPrice: p.dayPrice,
+    overnightPrice: p.overnightPrice,
+    monthlyPrice: p.monthlyPrice,
+    parkAndRideDiscountPercent: p.parkAndRideDiscountPercent,
+  }),
+  empty: () => ({
+    lotId: "",
+    vehicleType: "MOTORBIKE",
+    capacity: 0,
+    dayPrice: 0,
+    overnightPrice: 0,
+    monthlyPrice: 0,
+    parkAndRideDiscountPercent: 0,
+  }),
   fields: [
     {
-      key: "vehicle",
+      key: "lotId",
+      label: "Bãi xe",
+      type: "select",
+      required: true,
+      createOnly: true,
+      options: () => parkingLotsStore.get().map((l) => ({ value: l.id, label: l.name })),
+    },
+    {
+      key: "vehicleType",
       label: "Loại xe",
       type: "select",
       required: true,
-      options: () => ["Xe đạp", "Xe máy", "Ô tô"].map((v) => ({ value: v, label: v })),
+      createOnly: true,
+      options: () => options(VEHICLE_LABEL),
+    },
+    { key: "capacity", label: "Sức chứa (chỗ)", type: "number", required: true, min: 0 },
+    {
+      key: "dayPrice",
+      label: "Giá lượt ban ngày",
+      type: "number",
+      required: true,
+      min: 0,
+      format: money,
     },
     {
-      key: "unit",
-      label: "Đơn vị tính",
-      type: "select",
+      key: "overnightPrice",
+      label: "Giá qua đêm",
+      type: "number",
       required: true,
-      options: () => ["Lượt", "Giờ", "Ngày", "Tháng"].map((v) => ({ value: v, label: v })),
+      min: 0,
+      format: money,
     },
-    { key: "price", label: "Giá", type: "number", required: true, min: 1, format: money },
+    {
+      key: "monthlyPrice",
+      label: "Giá vé tháng",
+      type: "number",
+      required: true,
+      min: 0,
+      format: money,
+    },
+    {
+      key: "parkAndRideDiscountPercent",
+      label: "Giảm khi đi Metro (%)",
+      type: "number",
+      min: 0,
+      max: 100,
+      hint: "Gửi xe kết hợp đi Metro trong ngày",
+    },
   ],
   validate: (d, all, editingId) =>
-    all.some((p) => p.id !== editingId && p.vehicle === d.vehicle && p.unit === d.unit)
-      ? `Đã có giá cho ${d.vehicle} theo ${d.unit.toLowerCase()}`
+    !editingId && all.some((p) => p.lotId === d.lotId && p.vehicleType === d.vehicleType)
+      ? `Bãi này đã có giá cho ${VEHICLE_LABEL[d.vehicleType].toLowerCase()}, hãy sửa dòng đó`
       : null,
+  query: { key: parkingKeys.lots, fn: () => parkingLotsApi.list(), map: toParkingPrices },
+  create: (d) => upsertRate(d.lotId, d),
+  update: (item, d) => upsertRate(item.lotId, { ...d, vehicleType: item.vehicleType }),
 };
+
+function upsertRate(lotId: string, d: ParkingPriceDraft) {
+  return parkingLotsApi.upsertRate(Number(lotId), d.vehicleType, {
+    capacity: Number(d.capacity),
+    dayPriceVnd: Number(d.dayPrice),
+    overnightPriceVnd: Number(d.overnightPrice),
+    monthlyPriceVnd: Number(d.monthlyPrice),
+    parkAndRideDiscountPercent: Number(d.parkAndRideDiscountPercent || 0),
+  });
+}
 
 // ---------- Tàu ----------
 
-export const trainCatalog: Catalog<Train> = {
+type TrainDraft = Omit<Train, "id">;
+
+const optionalNumber = (value: unknown) =>
+  value === "" || value === null || value === undefined ? undefined : Number(value);
+
+export const trainCatalog: Catalog<Train, TrainDraft, TrainResponse[]> = {
   key: "train",
-  type: "TRAIN",
   noun: "đoàn tàu",
   store: trainsStore,
-  newId: () => `T${stamp()}`,
   labelOf: (t) => t.code,
-  toDraft: dropId,
+  toDraft: ({ id: _id, ...rest }) => rest,
   empty: () => ({
     code: "",
     name: "",
-    lineId: "L1",
+    lineId: linesStore.get()[0]?.id ?? "",
     capacity: 930,
     manufactureYear: new Date().getFullYear(),
     status: "READY",
   }),
   fields: [
     { key: "code", label: "Mã tàu", required: true },
-    { key: "name", label: "Tên tàu", required: true },
+    { key: "name", label: "Tên tàu" },
     {
       key: "lineId",
       label: "Tuyến",
       type: "select",
-      required: true,
-      options: () => lines.map((line) => ({ value: line.id, label: line.code })),
+      options: () => linesStore.get().map((line) => ({ value: line.id, label: line.code })),
     },
-    { key: "capacity", label: "Sức chứa (khách)", type: "number", required: true, min: 1 },
-    { key: "manufactureYear", label: "Năm sản xuất", type: "number", required: true, min: 1990 },
+    { key: "capacity", label: "Sức chứa (khách)", type: "number", min: 1, max: 5000 },
+    { key: "manufactureYear", label: "Năm sản xuất", type: "number", min: 1901, max: 2100 },
     {
       key: "status",
       label: "Trạng thái",
@@ -205,68 +467,25 @@ export const trainCatalog: Catalog<Train> = {
     taken(all, editingId, d.code, (t) => t.code) ? "Mã tàu đã tồn tại" : null,
   deleteGuard: (t) =>
     t.status === "IN_OPERATION" ? `${t.code} đang chạy, hãy đổi trạng thái trước khi xóa` : null,
+  query: { key: operationsKeys.trains, fn: trainsApi.all, map: (l) => l.map(toTrain) },
+  create: (d) =>
+    trainsApi.create({
+      code: text(d.code),
+      nameTrain: optionalText(d.name),
+      lineId: optionalNumber(d.lineId),
+      capacity: optionalNumber(d.capacity),
+      manufactureYear: optionalNumber(d.manufactureYear),
+      status: d.status,
+    }),
+  update: (item, d) =>
+    trainsApi.update(Number(item.id), {
+      code: text(d.code),
+      nameTrain: optionalText(d.name),
+      lineId: optionalNumber(d.lineId),
+      capacity: optionalNumber(d.capacity),
+      manufactureYear: optionalNumber(d.manufactureYear),
+      status: d.status === item.status ? undefined : d.status,
+    }),
+  remove: (item) => trainsApi.remove(Number(item.id)),
+  fieldOfApi: { nameTrain: "name" },
 };
-
-// ---------- Phân công ga ----------
-
-export type AssignmentDraft = { stationId: string | null };
-
-const stationName = (id: unknown) => stations.find((s) => s.id === id)?.name;
-
-export const assignmentCatalog: Catalog<User, AssignmentDraft> = {
-  key: "assignment",
-  type: "ASSIGNMENT",
-  noun: "phân công ga",
-  store: usersStore,
-  newId: () => `U${stamp()}`,
-  labelOf: (u) => ("name" in u ? u.name : ""),
-  toDraft: (u) => ({ stationId: u.stationId }),
-  empty: () => ({ stationId: null }),
-  fields: [
-    {
-      key: "stationId",
-      label: "Ga phụ trách",
-      format: (id) => stationName(id) ?? "Chưa phân công",
-    },
-  ],
-  validate: (d, all, editingId) => {
-    const user = all.find((u) => u.id === editingId);
-    if (!user) return "Vui lòng chọn nhân viên và ga";
-    if (!d.stationId) return null;
-    if (user.status !== "ACTIVE") return "Nhân viên đã nghỉ hoặc bị khóa, không thể phân công";
-    if (user.stationId && user.stationId !== d.stationId)
-      return `Nhân viên đã được phân công ga ${stationName(user.stationId)}. Hãy gỡ phân công trước.`;
-    return null;
-  },
-};
-
-// ---------- Xác nhận sinh viên ----------
-
-export const schoolCatalog: Catalog<StudentSchool> = {
-  key: "school",
-  type: "SCHOOL",
-  noun: "trường",
-  store: studentSchoolsStore,
-  newId: () => `SCH${stamp()}`,
-  labelOf: (s) => s.name,
-  toDraft: dropId,
-  empty: () => ({ name: "" }),
-  fields: [
-    { key: "name", label: "Tên trường", required: true, hint: "Đúng như in trên thẻ sinh viên" },
-  ],
-  validate: (d, all, editingId) =>
-    taken(all, editingId, d.name, (s) => s.name) ? "Trường đã có trong danh sách" : null,
-  deleteGuard: () =>
-    studentSchoolsStore.get().length <= 1 ? "Danh sách trường không được trống" : null,
-};
-
-export const CATALOGS: Record<string, AnyCatalog> = Object.fromEntries(
-  [
-    ticketTypeCatalog,
-    parkingLotCatalog,
-    parkingPriceCatalog,
-    trainCatalog,
-    assignmentCatalog,
-    schoolCatalog,
-  ].map((catalog) => [catalog.key, catalog as AnyCatalog]),
-);

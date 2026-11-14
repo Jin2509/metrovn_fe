@@ -21,7 +21,7 @@ import {
   stopsForStation,
   type MetroLine,
   type Station,
-} from "@/mocks/metro";
+} from "@/stores/metro";
 
 /**
  * Dữ liệu tuyến/ga thay cho dữ liệu giả (vd. lấy từ API). Bỏ trống thì bản đồ dùng dữ liệu giả.

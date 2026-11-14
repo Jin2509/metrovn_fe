@@ -1,7 +1,7 @@
 import { FileText, Paperclip, X } from "lucide-react";
 import { useRef } from "react";
 import { Button } from "@/components/ui/button";
-import type { Attachment } from "@/mocks/requests";
+import type { Attachment } from "@/stores/requests";
 import { ATTACHMENT_ACCEPT, ATTACHMENT_MAX_FILES } from "@/pages/approvals/work-requests.constants";
 
 function formatBytes(bytes: number) {

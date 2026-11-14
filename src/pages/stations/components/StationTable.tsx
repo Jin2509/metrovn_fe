@@ -76,6 +76,8 @@ export function StationTable({
       <DataTable
         rows={rows}
         pageSize={12}
+        rowKey={(r) => r.id}
+        rowActionLabel={(r) => `Xem chi tiết ga ${r.nameStation}`}
         onRow={(r) => onSelect(r.id)}
         empty={loading ? "Đang tải danh sách ga…" : "Không có ga phù hợp"}
         cols={[

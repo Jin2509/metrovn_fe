@@ -7,16 +7,16 @@ import { usePolicies } from "@/pages/policies/hooks/usePolicies";
 
 /** Tab "Chính sách đang áp dụng" (chỉ xem) trong trang Phê duyệt & chính sách. */
 export function PoliciesPanel() {
-  const { ticketTypes, parkingPrices, green, activeOperation, history } = usePolicies();
+  const { ticketTypes, parkingPrices, green, activeByLine, history } = usePolicies();
 
   return (
     <>
       <div className="grid gap-6 lg:grid-cols-2">
         <TicketTypesTable ticketTypes={ticketTypes} />
         <ParkingPricesTable prices={parkingPrices} />
-        <GreenPolicyTable config={green} />
+        <GreenPolicyTable settings={green} />
       </div>
-      <OperationHoursSection operation={activeOperation} />
+      <OperationHoursSection rows={activeByLine} />
       <ApprovalHistoryTable approvals={history} />
     </>
   );

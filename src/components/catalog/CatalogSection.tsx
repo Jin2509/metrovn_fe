@@ -1,28 +1,25 @@
-import { Clock, Pencil, Plus, Trash2, XCircle } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { CatalogFormDialog } from "@/components/catalog/CatalogFormDialog";
-import { DataTable, ReasonDialog, Section, type Col } from "@/components/shared";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { DataTable, LoadState, Section, type Col } from "@/components/shared";
 import {
-  isCatalogPayload,
-  pendingRequests,
-  requestCreate,
-  requestDelete,
-  requestUpdate,
-  type AnyCatalog,
-  type CatalogPayload,
-} from "@/lib/change-requests";
-import { approvalsStore } from "@/mocks/admin";
-
-const SENT = "Đã gửi Manager duyệt. Thay đổi chỉ có hiệu lực sau khi được phê duyệt.";
-const PENDING_LABEL = { CREATE: "thêm", UPDATE: "sửa", DELETE: "xóa" };
-const REJECTED_SHOWN = 3;
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import { deleteCatalogItem, saveCatalogItem, type AnyCatalog } from "@/lib/change-requests";
+import { useSyncedQuery } from "@/lib/query-sync";
 
 /**
- * Bảng một đối tượng nghiệp vụ kèm thêm/sửa/xóa. Mọi thao tác chỉ tạo yêu cầu cho Manager: dòng đang
- * chờ duyệt bị khóa, yêu cầu thêm mới và yêu cầu bị từ chối hiện ngay trên bảng để Admin theo dõi.
+ * Bảng một đối tượng nghiệp vụ kèm thêm/sửa/xóa, dữ liệu lấy từ backend (`catalog.query`).
+ * Thao tác ghi gọi thẳng API rồi tải lại bảng.
  */
 export function CatalogSection<T extends { id: string }>({
   catalog,
@@ -31,6 +28,7 @@ export function CatalogSection<T extends { id: string }>({
   columns,
   canEdit = true,
   pageSize,
+  action,
 }: {
   catalog: AnyCatalog;
   title: string;
@@ -38,46 +36,51 @@ export function CatalogSection<T extends { id: string }>({
   columns: Col<T>[];
   canEdit?: boolean;
   pageSize?: number;
+  /** Nút bổ sung cạnh nút "Thêm". */
+  action?: React.ReactNode;
 }) {
+  const data = useSyncedQuery({
+    queryKey: catalog.query.key,
+    queryFn: catalog.query.fn,
+    store: catalog.store,
+    map: catalog.query.map,
+  });
   const rows = catalog.store.use() as T[];
-  const approvals = approvalsStore.use();
   const [form, setForm] = useState<{ id?: string; draft: Record<string, unknown> } | null>(null);
   const [deleting, setDeleting] = useState<T | null>(null);
+  const [pending, setPending] = useState(false);
+  const canCreate = canEdit && !!catalog.create;
+  const canUpdate = canEdit && !!catalog.update;
+  const canRemove = canEdit && !!catalog.remove;
 
-  const pending = pendingRequests(catalog.key, approvals);
-  const pendingCreates = pending.filter((a) => (a.payload as CatalogPayload).action === "CREATE");
-  const pendingOf = (id: string) => pending.find((a) => (a.payload as CatalogPayload).id === id);
-  const rejected = approvals
-    .filter(
-      (a) =>
-        a.status === "REJECTED" && isCatalogPayload(a.payload) && a.payload.catalog === catalog.key,
-    )
-    .slice(0, REJECTED_SHOWN);
-
-  const finish = (error: string | null) => {
-    if (error) {
-      toast.error(error);
-      return error;
-    }
-    toast.success(SENT);
+  const submit = async (draft: Record<string, unknown>) => {
+    setPending(true);
+    const error = await saveCatalogItem(catalog, draft, form?.id);
+    setPending(false);
+    if (error) return error;
+    toast.success(form?.id ? `Đã cập nhật ${catalog.noun}` : `Đã thêm ${catalog.noun}`);
     setForm(null);
-    setDeleting(null);
+    await data.reload();
     return null;
+  };
+
+  const confirmDelete = async () => {
+    if (!deleting) return;
+    setPending(true);
+    const error = await deleteCatalogItem(catalog, deleting);
+    setPending(false);
+    if (error) return void toast.error(error);
+    toast.success(`Đã xóa ${catalog.noun} ${catalog.labelOf(deleting)}`);
+    setDeleting(null);
+    await data.reload();
   };
 
   const actionCol: Col<T> = {
     h: "Thao tác",
     className: "w-24 text-right",
-    c: (row) => {
-      const request = pendingOf(row.id);
-      if (request)
-        return (
-          <Badge variant="outline" className="whitespace-nowrap border-accent/50 font-normal">
-            Chờ duyệt {PENDING_LABEL[(request.payload as CatalogPayload).action]}
-          </Badge>
-        );
-      return (
-        <span className="flex justify-end gap-1">
+    c: (row) => (
+      <span className="flex justify-end gap-1">
+        {canUpdate && (
           <Button
             size="icon"
             variant="ghost"
@@ -87,6 +90,8 @@ export function CatalogSection<T extends { id: string }>({
           >
             <Pencil className="h-4 w-4" />
           </Button>
+        )}
+        {canRemove && (
           <Button
             size="icon"
             variant="ghost"
@@ -100,9 +105,9 @@ export function CatalogSection<T extends { id: string }>({
           >
             <Trash2 className="h-4 w-4" />
           </Button>
-        </span>
-      );
-    },
+        )}
+      </span>
+    ),
   };
 
   return (
@@ -110,56 +115,59 @@ export function CatalogSection<T extends { id: string }>({
       title={title}
       description={description}
       action={
-        canEdit && (
-          <Button onClick={() => setForm({ draft: catalog.empty() })}>
-            <Plus className="h-4 w-4" />
-            Thêm {catalog.noun}
-          </Button>
+        (canCreate || action) && (
+          <div className="flex flex-wrap gap-2">
+            {action}
+            {canCreate && (
+              <Button onClick={() => setForm({ draft: catalog.empty() })}>
+                <Plus className="h-4 w-4" />
+                Thêm {catalog.noun}
+              </Button>
+            )}
+          </div>
         )
       }
     >
-      {(pendingCreates.length > 0 || rejected.length > 0) && (
-        <ul className="mb-3 space-y-1.5 text-sm">
-          {pendingCreates.map((a) => (
-            <li key={a.id} className="flex items-center gap-2 rounded-md bg-accent/10 px-3 py-2">
-              <Clock className="h-4 w-4 shrink-0" />
-              Chờ Manager duyệt: {a.title}
-            </li>
-          ))}
-          {rejected.map((a) => (
-            <li
-              key={a.id}
-              className="flex items-center gap-2 rounded-md bg-destructive/10 px-3 py-2"
-            >
-              <XCircle className="h-4 w-4 shrink-0 text-destructive" />
-              {a.decidedBy} từ chối "{a.title}": {a.reason}
-            </li>
-          ))}
-        </ul>
+      <LoadState loading={data.loading} error={data.loadError} onRetry={data.reload} />
+      {!data.loading && !data.loadError && (
+        <DataTable
+          rows={rows}
+          pageSize={pageSize}
+          cols={canUpdate || canRemove ? [...columns, actionCol] : columns}
+        />
       )}
-      <DataTable
-        rows={rows}
-        pageSize={pageSize}
-        cols={canEdit ? [...columns, actionCol] : columns}
-      />
       {form && (
         <CatalogFormDialog
           catalog={catalog}
           initial={form.draft}
           editing={!!form.id}
+          pending={pending}
           onClose={() => setForm(null)}
-          onSubmit={(draft) =>
-            finish(form.id ? requestUpdate(catalog, form.id, draft) : requestCreate(catalog, draft))
-          }
+          onSubmit={submit}
         />
       )}
-      <ReasonDialog
-        open={!!deleting}
-        title={deleting ? `Xóa ${catalog.noun}: ${catalog.labelOf(deleting)}` : ""}
-        confirmLabel="Gửi yêu cầu xóa"
-        onClose={() => setDeleting(null)}
-        onConfirm={(reason) => deleting && finish(requestDelete(catalog, deleting.id, reason))}
-      />
+      <AlertDialog open={!!deleting} onOpenChange={(open) => !open && setDeleting(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Xóa {catalog.noun} {deleting ? catalog.labelOf(deleting) : ""}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>Thao tác này không hoàn tác được.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={pending}>Hủy</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={pending}
+              onClick={(event) => {
+                event.preventDefault();
+                void confirmDelete();
+              }}
+            >
+              Xóa
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Section>
   );
 }
