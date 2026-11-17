@@ -13,12 +13,51 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import type { LinesState } from "@/pages/lines/hooks/useLines";
+import { SEGMENT_LIMITS, type SegmentErrors } from "@/pages/lines/lines.service";
 import { STATION_STATUS_LABELS } from "@/pages/stations/stations.service";
 
 const km = (n: number) =>
   n.toLocaleString("vi-VN", { minimumFractionDigits: 1, maximumFractionDigits: 3 });
 
 const END = "end";
+
+/** Ô số liệu đoạn: báo lỗi ngay dưới ô (aria-invalid + aria-describedby cho trình đọc màn hình). */
+function SegmentCell({
+  id,
+  value,
+  error,
+  disabled,
+  onChange,
+  ...props
+}: {
+  id: string;
+  value: string;
+  error?: string;
+  disabled: boolean;
+  onChange: (value: string) => void;
+} & Pick<React.ComponentProps<typeof Input>, "step" | "min" | "max" | "inputMode" | "aria-label">) {
+  const errorId = `${id}-error`;
+  return (
+    <div className="space-y-0.5">
+      <Input
+        id={id}
+        type="number"
+        className={cn("h-8", error && "border-destructive")}
+        disabled={disabled}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? errorId : undefined}
+        {...props}
+      />
+      {error && (
+        <p id={errorId} className="text-[11px] leading-tight text-destructive">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
 
 /** Bảng ga trên tuyến: thứ tự (kéo thả), số liệu đoạn từ ga trước và thời gian dừng. */
 export function LineStationEditor({ l }: { l: LinesState }) {
@@ -73,7 +112,12 @@ export function LineStationEditor({ l }: { l: LinesState }) {
                   Hoàn tác
                 </Button>
                 <Button
-                  disabled={!l.segmentsDirty || l.pending}
+                  disabled={!l.segmentsDirty || l.pending || l.invalidSegmentCount > 0}
+                  title={
+                    l.invalidSegmentCount
+                      ? `Còn ${l.invalidSegmentCount} dòng có số liệu chưa hợp lệ`
+                      : undefined
+                  }
                   onClick={() => void l.saveSegments()}
                 >
                   Lưu số liệu đoạn
@@ -101,6 +145,12 @@ export function LineStationEditor({ l }: { l: LinesState }) {
           </AlertDescription>
         </Alert>
       )}
+      {l.invalidSegmentCount > 0 && (
+        <p role="alert" className="mb-2 text-xs text-destructive">
+          Còn {l.invalidSegmentCount} dòng có số liệu chưa hợp lệ: khoảng cách &gt; 0 km (tối đa 3
+          chữ số thập phân), thời gian chạy và dừng là số giây nguyên.
+        </p>
+      )}
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="text-xs uppercase text-muted-foreground">
@@ -124,8 +174,11 @@ export function LineStationEditor({ l }: { l: LinesState }) {
             )}
             {l.rows.map((r, i) => {
               const seg = l.segmentDraft(r);
+              const errs: SegmentErrors = l.segmentErrors(r, i);
+              const warn = l.segmentWarning(r, i);
               const flagged = l.recalculated.includes(r.station.id);
               const ch = chainage.get(r.station.id);
+              const cellId = (key: keyof SegmentErrors) => `seg-${r.station.id}-${key}`;
               return (
                 <tr
                   key={r.station.id}
@@ -159,42 +212,56 @@ export function LineStationEditor({ l }: { l: LinesState }) {
                         </span>
                       )}
                     </div>
+                    {warn && (
+                      <p className="mt-0.5 text-[11px] leading-tight text-amber-600">{warn}</p>
+                    )}
                   </td>
                   <td className="py-1.5">
                     {i === 0 ? (
                       <span className="text-xs text-muted-foreground">Ga đầu</span>
                     ) : (
-                      <Input
-                        type="number"
+                      <SegmentCell
+                        id={cellId("distance")}
+                        aria-label={`Khoảng cách tới ga ${r.station.nameStation} (km)`}
                         step="0.001"
-                        min={0}
-                        className="h-8"
+                        min={0.001}
+                        max={SEGMENT_LIMITS.maxDistanceKm}
+                        inputMode="decimal"
                         disabled={segmentLocked}
                         value={seg.distance}
-                        onChange={(e) => l.setSegment(r, { distance: e.target.value })}
+                        error={errs.distance}
+                        onChange={(v) => l.setSegment(r, { distance: v })}
                       />
                     )}
                   </td>
                   <td className="py-1.5">
                     {i > 0 && (
-                      <Input
-                        type="number"
-                        min={0}
-                        className="h-8"
+                      <SegmentCell
+                        id={cellId("travel")}
+                        aria-label={`Thời gian chạy tới ga ${r.station.nameStation} (giây)`}
+                        step={1}
+                        min={1}
+                        max={SEGMENT_LIMITS.maxTravelSeconds}
+                        inputMode="numeric"
                         disabled={segmentLocked}
                         value={seg.travel}
-                        onChange={(e) => l.setSegment(r, { travel: e.target.value })}
+                        error={errs.travel}
+                        onChange={(v) => l.setSegment(r, { travel: v })}
                       />
                     )}
                   </td>
                   <td className="py-1.5">
-                    <Input
-                      type="number"
+                    <SegmentCell
+                      id={cellId("dwell")}
+                      aria-label={`Thời gian dừng tại ga ${r.station.nameStation} (giây)`}
+                      step={1}
                       min={0}
-                      className="h-8"
+                      max={SEGMENT_LIMITS.maxDwellSeconds}
+                      inputMode="numeric"
                       disabled={segmentLocked}
                       value={seg.dwell}
-                      onChange={(e) => l.setSegment(r, { dwell: e.target.value })}
+                      error={errs.dwell}
+                      onChange={(v) => l.setSegment(r, { dwell: v })}
                     />
                   </td>
                   <td className="py-1.5 text-right tabular-nums text-muted-foreground">

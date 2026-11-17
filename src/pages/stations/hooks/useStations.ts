@@ -10,6 +10,7 @@ import {
   buildCreateStationBody,
   buildUpdateStationBody,
   stationErrorsFromApi,
+  stationWarnings,
   toStationDraft,
   validateStationDraft,
 } from "@/pages/stations/stations.service";
@@ -33,6 +34,8 @@ export function useStations() {
   const [status, setStatus] = useState<StationStatusFilter>("ALL");
   const [form, setForm] = useState<{ id?: number; draft: StationDraft } | null>(null);
   const [errors, setErrors] = useState<StationErrors>({});
+  // Đã bấm lưu ít nhất một lần: từ đó kiểm tra lại ngay khi gõ để lỗi tự biến mất khi đã sửa đúng.
+  const [attempted, setAttempted] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<StationListRow | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -60,15 +63,25 @@ export function useStations() {
 
   const openCreate = () => {
     setErrors({});
+    setAttempted(false);
     setForm({ draft: EMPTY_STATION_DRAFT });
   };
   const openEdit = (s: StationResponse) => {
     setErrors({});
+    setAttempted(false);
     setForm({ id: s.id, draft: toStationDraft(s) });
   };
+  const updateDraft = (draft: StationDraft) => {
+    setForm((f) => (f ? { ...f, draft } : f));
+    if (attempted && form) setErrors(validateStationDraft(draft, net.stations, form.id));
+  };
+  const warnings = form
+    ? stationWarnings(form.draft, net.stations, form.id, { includeMissing: attempted })
+    : [];
 
   const submit = async () => {
     if (!form || pending) return;
+    setAttempted(true);
     const next = validateStationDraft(form.draft, net.stations, form.id);
     setErrors(next);
     if (Object.keys(next).length) return;
@@ -145,7 +158,9 @@ export function useStations() {
     select,
     form,
     setForm,
+    updateDraft,
     errors,
+    warnings,
     pending,
     openCreate,
     openEdit,

@@ -1,4 +1,6 @@
 import { ArrowRight, Plus, Trash2 } from "lucide-react";
+import { FieldError } from "@/components/form-field";
+import { fieldErrorProps } from "@/components/form-field.utils";
 import { Section, StatusBadge } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -13,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import type { LineResponse, StationResponse } from "@/lib/api";
 import type { useLineTransfers } from "@/pages/lines/hooks/useLineTransfers";
+import { TRANSFER_MAX_MINUTES } from "@/pages/lines/lines.service";
 import { ConfirmDialog } from "@/pages/stations/components/ConfirmDialog";
 
 export function LineTransfersSection({
@@ -32,6 +35,7 @@ export function LineTransfersSection({
   const stationName = (id: number) => stations.find((s) => s.id === id)?.nameStation ?? `#${id}`;
   const d = t.draft;
   const toLines = d?.stationId ? t.otherLinesAt(Number(d.stationId)) : [];
+  const e = t.errors;
 
   return (
     <Section
@@ -59,12 +63,22 @@ export function LineTransfersSection({
       {d && (
         <div className="mb-4 grid gap-3 rounded-lg border p-3 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <Label>Ga giao cắt</Label>
+            <Label htmlFor="transfer-station">
+              Ga giao cắt
+              <span aria-hidden className="text-destructive">
+                {" "}
+                *
+              </span>
+            </Label>
             <Select
               value={d.stationId}
-              onValueChange={(v) => t.setDraft({ ...d, stationId: v, toLineId: "" })}
+              onValueChange={(v) => t.updateDraft({ stationId: v, toLineId: "" })}
             >
-              <SelectTrigger>
+              <SelectTrigger
+                id="transfer-station"
+                aria-required
+                {...fieldErrorProps("transfer-station", e.stationId)}
+              >
                 <SelectValue placeholder="Chọn ga" />
               </SelectTrigger>
               <SelectContent>
@@ -75,16 +89,27 @@ export function LineTransfersSection({
                 ))}
               </SelectContent>
             </Select>
+            <FieldError fieldId="transfer-station">{e.stationId}</FieldError>
           </div>
           <div className="space-y-1.5">
-            <Label>Từ {line.code} sang tuyến</Label>
+            <Label htmlFor="transfer-line">
+              Từ {line.code} sang tuyến
+              <span aria-hidden className="text-destructive">
+                {" "}
+                *
+              </span>
+            </Label>
             <Select
               value={d.toLineId}
               disabled={!toLines.length}
-              onValueChange={(v) => t.setDraft({ ...d, toLineId: v })}
+              onValueChange={(v) => t.updateDraft({ toLineId: v })}
             >
-              <SelectTrigger>
-                <SelectValue placeholder="Chọn tuyến" />
+              <SelectTrigger
+                id="transfer-line"
+                aria-required
+                {...fieldErrorProps("transfer-line", e.toLineId)}
+              >
+                <SelectValue placeholder={d.stationId ? "Chọn tuyến" : "Chọn ga trước"} />
               </SelectTrigger>
               <SelectContent>
                 {toLines.map((l) => (
@@ -94,26 +119,40 @@ export function LineTransfersSection({
                 ))}
               </SelectContent>
             </Select>
+            <FieldError fieldId="transfer-line">{e.toLineId}</FieldError>
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="transfer-min">Thời gian chuyển (phút)</Label>
+            <Label htmlFor="transfer-min">
+              Thời gian chuyển (phút)
+              <span aria-hidden className="text-destructive">
+                {" "}
+                *
+              </span>
+            </Label>
             <Input
               id="transfer-min"
               type="number"
+              inputMode="numeric"
               min={0}
+              max={TRANSFER_MAX_MINUTES}
+              step={1}
+              required
+              aria-required
               value={d.minutes}
-              onChange={(e) => t.setDraft({ ...d, minutes: e.target.value })}
+              onChange={(ev) => t.updateDraft({ minutes: ev.target.value })}
+              {...fieldErrorProps("transfer-min", e.minutes)}
             />
+            <FieldError fieldId="transfer-min">{e.minutes}</FieldError>
           </div>
           <label className="flex items-center gap-2 self-end pb-2 text-sm">
             <Checkbox
               checked={d.bothWays}
-              onCheckedChange={(v) => t.setDraft({ ...d, bothWays: !!v })}
+              onCheckedChange={(v) => t.updateDraft({ bothWays: !!v })}
             />
             Tạo cả chiều ngược lại
           </label>
           <div className="flex justify-end gap-2 sm:col-span-2">
-            <Button variant="ghost" disabled={t.pending} onClick={() => t.setDraft(null)}>
+            <Button variant="ghost" disabled={t.pending} onClick={t.closeDraft}>
               Huỷ
             </Button>
             <Button disabled={t.pending} onClick={() => void t.submit()}>

@@ -6,11 +6,16 @@ import {
   buildLine3DModel,
   buildUpdateLineBody,
   lineTotals,
+  lineWarnings,
   moveRow,
   recalculatedStationIds,
+  segmentPatch,
+  segmentWarning,
   toLineDraft,
   travelSecondsBetween,
   validateLineDraft,
+  validateSegmentDraft,
+  validateTransferDraft,
   visibleLabelIds,
 } from "@/pages/lines/lines.service";
 
@@ -181,5 +186,142 @@ describe("tuyến: form", () => {
       colorHex: "Màu phải có dạng #RRGGBB",
     });
     expect(validateLineDraft({ ...toLineDraft(line) }, [line]).code).toBe("Mã tuyến đã tồn tại");
+  });
+
+  it("mã sai định dạng, tên trùng tuyến khác, mô tả quá dài; cảnh báo trùng màu", () => {
+    const draft = {
+      ...toLineDraft(line),
+      code: "tuyến 2",
+      name: "bến thành - suối tiên",
+      description: "x".repeat(1001),
+    };
+    expect(validateLineDraft(draft, [line])).toMatchObject({
+      code: expect.stringContaining("chữ in hoa"),
+      name: "Tên tuyến đã dùng cho tuyến BTS-01",
+      description: expect.stringContaining("1000"),
+    });
+    expect(
+      lineWarnings({ ...toLineDraft(line), code: "BTS-02", colorHex: "#00aeef" }, [line]),
+    ).toEqual([expect.stringMatching(/đang dùng cho tuyến BTS-01/)]);
+    expect(lineWarnings(toLineDraft(line), [line], line.id)).toEqual([]);
+  });
+});
+
+describe("số liệu đoạn", () => {
+  const row = {
+    id: 1,
+    lineId: 1,
+    lineCode: "BTS-01",
+    lineName: "",
+    station: { id: 2 } as never,
+    stationOrder: 2,
+    distanceFromPrevKm: 0.7,
+    travelTimeFromPrevSeconds: 42,
+    dwellTimeSeconds: 30,
+    createdAt: "",
+  };
+
+  it("ga đầu chỉ kiểm tra thời gian dừng; ga khác cần khoảng cách > 0 và thời gian chạy nguyên > 0", () => {
+    expect(validateSegmentDraft({ distance: "", travel: "", dwell: "30" }, true)).toEqual({});
+    expect(validateSegmentDraft({ distance: "0", travel: "0", dwell: "-1" }, false)).toEqual({
+      distance: "Khoảng cách phải lớn hơn 0",
+      travel: "Số giây nguyên > 0",
+      dwell: "Số giây nguyên ≥ 0",
+    });
+    expect(validateSegmentDraft({ distance: "1.2345", travel: "42.5", dwell: "" }, false)).toEqual({
+      distance: "Tối đa 3 chữ số thập phân",
+      travel: "Số giây nguyên > 0",
+      dwell: "Nhập thời gian dừng (giây)",
+    });
+    expect(validateSegmentDraft({ distance: "0.7", travel: "42", dwell: "30" }, false)).toEqual({});
+  });
+
+  it("cảnh báo tốc độ bất thường (nhập mét thay vì km, phút thay vì giây)", () => {
+    expect(segmentWarning({ distance: "700", travel: "42", dwell: "30" }, false)).toMatch(
+      /quá cao/,
+    );
+    expect(segmentWarning({ distance: "0.7", travel: "4200", dwell: "30" }, false)).toMatch(
+      /quá thấp/,
+    );
+    expect(segmentWarning({ distance: "0.7", travel: "42", dwell: "30" }, false)).toBeUndefined();
+    expect(segmentWarning({ distance: "0", travel: "0", dwell: "30" }, true)).toBeUndefined();
+  });
+
+  it("segmentPatch chỉ gửi field đã đổi, null khi có ô sai", () => {
+    expect(segmentPatch({ distance: "0.7", travel: "45", dwell: "30" }, row, false)).toEqual({
+      travelTimeFromPrevSeconds: 45,
+    });
+    expect(segmentPatch({ distance: "0.7", travel: "42", dwell: "30" }, row, false)).toEqual({});
+    expect(segmentPatch({ distance: "abc", travel: "42", dwell: "30" }, row, false)).toBeNull();
+    // Ga đầu: chỉ thời gian dừng, kể cả khi ô khác đang rỗng.
+    expect(segmentPatch({ distance: "", travel: "", dwell: "40" }, row, true)).toEqual({
+      dwellTimeSeconds: 40,
+    });
+  });
+});
+
+describe("chuyển tuyến", () => {
+  const existing = [
+    {
+      id: 1,
+      stationId: 5,
+      fromLineId: 1,
+      toLineId: 2,
+      transferTimeMinutes: 5,
+      status: "ACTIVE" as const,
+      createdAt: "",
+      updatedAt: "",
+    },
+  ];
+
+  it("bắt buộc chọn ga và tuyến, tuyến khác tuyến hiện tại, không trùng, phút nguyên 0..120", () => {
+    expect(
+      validateTransferDraft(
+        { stationId: "", toLineId: "", minutes: "", bothWays: true },
+        1,
+        existing,
+      ),
+    ).toEqual({
+      stationId: "Vui lòng chọn ga giao cắt",
+      toLineId: "Vui lòng chọn tuyến chuyển sang",
+      minutes: "Nhập thời gian chuyển (phút)",
+    });
+    expect(
+      validateTransferDraft(
+        { stationId: "5", toLineId: "1", minutes: "5", bothWays: true },
+        1,
+        existing,
+      ).toLineId,
+    ).toMatch(/khác tuyến hiện tại/);
+    expect(
+      validateTransferDraft(
+        { stationId: "5", toLineId: "2", minutes: "5", bothWays: true },
+        1,
+        existing,
+      ).toLineId,
+    ).toBe("Điểm chuyển tuyến này đã tồn tại");
+    expect(
+      validateTransferDraft(
+        { stationId: "5", toLineId: "3", minutes: "2.5", bothWays: true },
+        1,
+        existing,
+      ),
+    ).toEqual({
+      minutes: "Số phút nguyên ≥ 0",
+    });
+    expect(
+      validateTransferDraft(
+        { stationId: "5", toLineId: "3", minutes: "121", bothWays: true },
+        1,
+        existing,
+      ).minutes,
+    ).toMatch(/Tối đa 120/);
+    expect(
+      validateTransferDraft(
+        { stationId: "5", toLineId: "3", minutes: "5", bothWays: true },
+        1,
+        existing,
+      ),
+    ).toEqual({});
   });
 });

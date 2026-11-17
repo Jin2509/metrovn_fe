@@ -109,8 +109,9 @@ export function LinesPanel() {
       <LineFormDialog
         form={l.lineForm}
         errors={l.lineErrors}
+        warnings={l.lineFormWarnings}
         pending={l.pending}
-        onChange={(draft) => l.setLineForm((f) => (f ? { ...f, draft } : f))}
+        onChange={l.updateLineDraft}
         onClose={() => l.setLineForm(null)}
         onSubmit={() => void l.submitLine()}
       />

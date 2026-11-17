@@ -9,15 +9,15 @@ import {
   type LineStationResponse,
   type LineTransferResponse,
 } from "@/lib/api";
+import {
+  hasTransfer,
+  validateTransferDraft,
+  type TransferDraft,
+  type TransferErrors,
+} from "@/pages/lines/lines.service";
 import { NETWORK_KEY, networkKeys } from "@/pages/stations/hooks/useNetwork";
 
-export type TransferDraft = {
-  stationId: string;
-  toLineId: string;
-  minutes: string;
-  /** Tạo thêm bản ghi chiều ngược lại (chuyển tuyến có hướng). */
-  bothWays: boolean;
-};
+export type { TransferDraft } from "@/pages/lines/lines.service";
 
 const EMPTY: TransferDraft = { stationId: "", toLineId: "", minutes: "5", bothWays: true };
 
@@ -35,7 +35,10 @@ export function useLineTransfers(
     enabled: lineId !== undefined,
     retry: false,
   });
+  const transfers = query.data ?? [];
   const [draft, setDraft] = useState<TransferDraft | null>(null);
+  const [errors, setErrors] = useState<TransferErrors>({});
+  const [attempted, setAttempted] = useState(false);
   const [pending, setPending] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<LineTransferResponse | null>(null);
 
@@ -48,6 +51,16 @@ export function useLineTransfers(
   const candidateStations = ownStations
     .map((r) => r.station)
     .filter((s) => otherLinesAt(s.id).length > 0);
+
+  const validate = (next: TransferDraft) =>
+    lineId === undefined ? {} : validateTransferDraft(next, lineId, transfers);
+
+  const updateDraft = (patch: Partial<TransferDraft>) => {
+    if (!draft) return;
+    const next = { ...draft, ...patch };
+    setDraft(next);
+    if (attempted) setErrors(validate(next));
+  };
 
   const refresh = () =>
     // isInterchange của ga đổi theo, nên tải lại cả nhóm dữ liệu mạng lưới.
@@ -69,32 +82,34 @@ export function useLineTransfers(
   const submit = () =>
     run(async () => {
       if (!draft || lineId === undefined) return;
+      setAttempted(true);
+      const next = validate(draft);
+      setErrors(next);
+      if (Object.keys(next).length) return;
       const stationId = Number(draft.stationId);
       const toLineId = Number(draft.toLineId);
       const minutes = Number(draft.minutes);
-      if (!stationId || !toLineId) {
-        toast.error("Vui lòng chọn ga và tuyến chuyển sang");
-        return;
-      }
-      if (!(minutes >= 0) || !Number.isInteger(minutes)) {
-        toast.error("Thời gian chuyển tuyến phải là số phút nguyên ≥ 0");
-        return;
-      }
       await lineTransfersApi.create({
         stationId,
         fromLineId: lineId,
         toLineId,
         transferTimeMinutes: minutes,
       });
-      if (draft.bothWays)
-        await lineTransfersApi.create({
-          stationId,
-          fromLineId: toLineId,
-          toLineId: lineId,
-          transferTimeMinutes: minutes,
-        });
+      if (draft.bothWays) {
+        if (hasTransfer(transfers, stationId, toLineId, lineId))
+          toast.info("Chiều ngược lại đã có sẵn, không tạo thêm");
+        else
+          await lineTransfersApi.create({
+            stationId,
+            fromLineId: toLineId,
+            toLineId: lineId,
+            transferTimeMinutes: minutes,
+          });
+      }
       toast.success("Đã tạo điểm chuyển tuyến");
       setDraft(null);
+      setErrors({});
+      setAttempted(false);
     });
 
   const toggleStatus = (t: LineTransferResponse) =>
@@ -114,15 +129,24 @@ export function useLineTransfers(
     });
 
   return {
-    transfers: query.data ?? [],
+    transfers,
     loading: query.isPending && lineId !== undefined,
     loadError: query.isError ? apiErrorMessage(query.error) : "",
     pending,
     candidateStations,
     otherLinesAt,
     draft,
-    openCreate: () => setDraft(EMPTY),
-    setDraft,
+    errors,
+    openCreate: () => {
+      setDraft(EMPTY);
+      setErrors({});
+      setAttempted(false);
+    },
+    closeDraft: () => {
+      setDraft(null);
+      setErrors({});
+    },
+    updateDraft,
     submit,
     toggleStatus,
     deleteTarget,

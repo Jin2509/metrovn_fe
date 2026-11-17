@@ -4,10 +4,13 @@ import {
   type LineResponse,
   type LineStationResponse,
   type LineStatus,
+  type LineTransferResponse,
   type StationOrderItem,
   type UpdateLineBody,
+  type UpdateSegmentBody,
 } from "@/lib/api";
 import { haversine } from "@/lib/geo";
+import { CODE_PATTERN, CODE_RULE } from "@/pages/stations/stations.service";
 import {
   lineDepots,
   STRUCTURE_LEVEL_M,
@@ -241,6 +244,11 @@ export const toLineDraft = (line: LineResponse): LineDraft => ({
   status: line.status,
 });
 
+const sameName = (a: string, b: string) =>
+  a.trim().localeCompare(b.trim(), "vi", { sensitivity: "base" }) === 0;
+
+export const LINE_DESCRIPTION_MAX = 1000;
+
 export function validateLineDraft(
   draft: LineDraft,
   all: LineResponse[],
@@ -252,11 +260,163 @@ export function validateLineDraft(
   else if (code.length > 20) errors.code = "Mã tuyến tối đa 20 ký tự";
   else if (all.some((l) => l.id !== editingId && l.code.toLowerCase() === code.toLowerCase()))
     errors.code = "Mã tuyến đã tồn tại";
+  else if (!CODE_PATTERN.test(code)) errors.code = CODE_RULE;
   const name = draft.name.trim();
   if (!name) errors.name = "Vui lòng nhập tên tuyến";
+  else if (name.length < 2) errors.name = "Tên tuyến quá ngắn";
   else if (name.length > 100) errors.name = "Tên tuyến tối đa 100 ký tự";
+  else {
+    const dup = all.find((l) => l.id !== editingId && sameName(l.nameLine, name));
+    if (dup) errors.name = `Tên tuyến đã dùng cho tuyến ${dup.code}`;
+  }
   const color = draft.colorHex.trim();
   if (color && !/^#[0-9A-Fa-f]{6}$/.test(color)) errors.colorHex = "Màu phải có dạng #RRGGBB";
+  if (draft.description.trim().length > LINE_DESCRIPTION_MAX)
+    errors.description = `Mô tả tối đa ${LINE_DESCRIPTION_MAX} ký tự`;
+  return errors;
+}
+
+/** Cảnh báo không chặn lưu. */
+export function lineWarnings(draft: LineDraft, all: LineResponse[], editingId?: number): string[] {
+  const warnings: string[] = [];
+  const color = draft.colorHex.trim().toUpperCase();
+  const sameColor = all.find(
+    (l) => l.id !== editingId && (l.colorHex ?? "").toUpperCase() === color && color,
+  );
+  if (sameColor)
+    warnings.push(
+      `Màu này đang dùng cho tuyến ${sameColor.code}: hai tuyến sẽ khó phân biệt trên bản đồ.`,
+    );
+  if (!color) warnings.push("Chưa chọn màu: tuyến sẽ hiện màu xám mặc định trên bản đồ.");
+  return warnings;
+}
+
+// ---------- Số liệu đoạn giữa hai ga ----------
+
+/** Ô nhập số liệu đoạn đang sửa (chuỗi để xoá trắng được khi đang gõ). */
+export type SegmentDraft = { distance: string; travel: string; dwell: string };
+export type SegmentErrors = Partial<Record<keyof SegmentDraft, string>>;
+
+export const SEGMENT_LIMITS = {
+  /** DECIMAL(8,3) ở backend. */
+  maxDistanceKm: 99999.999,
+  maxTravelSeconds: 24 * 3600,
+  maxDwellSeconds: 3600,
+  /** Tốc độ trung bình hợp lý của metro đô thị (km/h) để cảnh báo nhập nhầm đơn vị. */
+  minSpeedKmh: 5,
+  maxSpeedKmh: 120,
+};
+
+const parseNumber = (raw: string) => {
+  const text = raw.trim();
+  if (!text) return undefined;
+  const value = Number(text);
+  return Number.isFinite(value) ? value : NaN;
+};
+
+/**
+ * Kiểm tra số liệu một đoạn: ga đầu tuyến chỉ có thời gian dừng; các ga khác cần khoảng cách > 0
+ * (tối đa 3 chữ số thập phân), thời gian chạy là số giây nguyên > 0, thời gian dừng nguyên ≥ 0.
+ */
+export function validateSegmentDraft(draft: SegmentDraft, first: boolean): SegmentErrors {
+  const errors: SegmentErrors = {};
+  const L = SEGMENT_LIMITS;
+  const dwell = parseNumber(draft.dwell);
+  if (dwell === undefined) errors.dwell = "Nhập thời gian dừng (giây)";
+  else if (!Number.isInteger(dwell) || dwell < 0) errors.dwell = "Số giây nguyên ≥ 0";
+  else if (dwell > L.maxDwellSeconds) errors.dwell = `Tối đa ${L.maxDwellSeconds} giây`;
+  if (first) return errors;
+
+  const distance = parseNumber(draft.distance);
+  if (distance === undefined) errors.distance = "Nhập khoảng cách (km)";
+  else if (!(distance > 0)) errors.distance = "Khoảng cách phải lớn hơn 0";
+  else if (distance > L.maxDistanceKm) errors.distance = `Tối đa ${L.maxDistanceKm} km`;
+  else if (!/^\d+(\.\d{1,3})?$/.test(draft.distance.trim()))
+    errors.distance = "Tối đa 3 chữ số thập phân";
+
+  const travel = parseNumber(draft.travel);
+  if (travel === undefined) errors.travel = "Nhập thời gian chạy (giây)";
+  else if (!Number.isInteger(travel) || travel <= 0) errors.travel = "Số giây nguyên > 0";
+  else if (travel > L.maxTravelSeconds) errors.travel = `Tối đa ${L.maxTravelSeconds} giây`;
+  return errors;
+}
+
+/** Cảnh báo tốc độ trung bình bất thường (thường do nhập nhầm m thay vì km, hoặc phút thay vì giây). */
+export function segmentWarning(draft: SegmentDraft, first: boolean): string | undefined {
+  if (first || Object.keys(validateSegmentDraft(draft, first)).length) return undefined;
+  const kmh = (Number(draft.distance) / Number(draft.travel)) * 3600;
+  if (kmh > SEGMENT_LIMITS.maxSpeedKmh)
+    return `Tốc độ trung bình ${Math.round(kmh)} km/h quá cao, kiểm tra lại đơn vị (km và giây)`;
+  if (kmh < SEGMENT_LIMITS.minSpeedKmh)
+    return `Tốc độ trung bình ${kmh.toFixed(1)} km/h quá thấp, kiểm tra lại đơn vị (km và giây)`;
+  return undefined;
+}
+
+export const segmentDraftOf = (row: LineStationResponse): SegmentDraft => ({
+  distance: String(row.distanceFromPrevKm),
+  travel: String(row.travelTimeFromPrevSeconds),
+  dwell: String(row.dwellTimeSeconds),
+});
+
+/** Các field đoạn đã đổi so với dữ liệu đã lưu; `null` nếu có ô không hợp lệ. */
+export function segmentPatch(
+  draft: SegmentDraft,
+  row: LineStationResponse,
+  first: boolean,
+): UpdateSegmentBody | null {
+  if (Object.keys(validateSegmentDraft(draft, first)).length) return null;
+  const body: UpdateSegmentBody = {};
+  const dwell = Number(draft.dwell);
+  if (dwell !== row.dwellTimeSeconds) body.dwellTimeSeconds = dwell;
+  if (first) return body; // ga đầu tuyến: khoảng cách và thời gian chạy luôn là 0
+  const distance = Number(draft.distance);
+  const travel = Number(draft.travel);
+  if (distance !== row.distanceFromPrevKm) body.distanceFromPrevKm = distance;
+  if (travel !== row.travelTimeFromPrevSeconds) body.travelTimeFromPrevSeconds = travel;
+  return body;
+}
+
+// ---------- Chuyển tuyến ----------
+
+export type TransferDraft = {
+  stationId: string;
+  toLineId: string;
+  minutes: string;
+  /** Tạo thêm bản ghi chiều ngược lại (chuyển tuyến có hướng). */
+  bothWays: boolean;
+};
+export type TransferErrors = Partial<Record<"stationId" | "toLineId" | "minutes", string>>;
+
+export const TRANSFER_MAX_MINUTES = 120;
+
+export const hasTransfer = (
+  all: LineTransferResponse[],
+  stationId: number,
+  fromLineId: number,
+  toLineId: number,
+) =>
+  all.some(
+    (t) => t.stationId === stationId && t.fromLineId === fromLineId && t.toLineId === toLineId,
+  );
+
+/** Kiểm tra form thêm chuyển tuyến theo đúng quy tắc backend: ga phải thuộc cả hai tuyến, không trùng. */
+export function validateTransferDraft(
+  draft: TransferDraft,
+  fromLineId: number,
+  existing: LineTransferResponse[],
+): TransferErrors {
+  const errors: TransferErrors = {};
+  const stationId = Number(draft.stationId);
+  const toLineId = Number(draft.toLineId);
+  if (!stationId) errors.stationId = "Vui lòng chọn ga giao cắt";
+  if (!toLineId) errors.toLineId = "Vui lòng chọn tuyến chuyển sang";
+  else if (toLineId === fromLineId) errors.toLineId = "Tuyến chuyển sang phải khác tuyến hiện tại";
+  else if (stationId && hasTransfer(existing, stationId, fromLineId, toLineId))
+    errors.toLineId = "Điểm chuyển tuyến này đã tồn tại";
+  const minutes = parseNumber(draft.minutes);
+  if (minutes === undefined) errors.minutes = "Nhập thời gian chuyển (phút)";
+  else if (!Number.isInteger(minutes) || minutes < 0) errors.minutes = "Số phút nguyên ≥ 0";
+  else if (minutes > TRANSFER_MAX_MINUTES) errors.minutes = `Tối đa ${TRANSFER_MAX_MINUTES} phút`;
   return errors;
 }
 

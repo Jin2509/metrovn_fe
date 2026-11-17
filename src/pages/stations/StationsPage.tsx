@@ -48,9 +48,10 @@ function StationListPanel() {
       <StationFormDialog
         form={s.form}
         errors={s.errors}
+        warnings={s.warnings}
         pending={s.pending}
         network={s.mapNetwork}
-        onChange={(draft) => s.setForm((f) => (f ? { ...f, draft } : f))}
+        onChange={s.updateDraft}
         onClose={() => s.setForm(null)}
         onSubmit={() => void s.submit()}
       />

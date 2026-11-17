@@ -7,7 +7,6 @@ import {
   linesApi,
   type LineResponse,
   type LineStationResponse,
-  type UpdateSegmentBody,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import {
@@ -16,47 +15,24 @@ import {
   buildUpdateLineBody,
   lineErrorsFromApi,
   lineTotals,
+  lineWarnings,
   moveItem,
   recalculatedStationIds,
+  segmentDraftOf,
+  segmentPatch,
+  segmentWarning,
   toLineDraft,
   toOrderItems,
   validateLineDraft,
+  validateSegmentDraft,
   type LineDraft,
   type LineErrors,
+  type SegmentDraft,
 } from "@/pages/lines/lines.service";
 import { NETWORK_KEY, networkKeys, useNetwork } from "@/pages/stations/hooks/useNetwork";
 import { STATION_MANAGE } from "@/pages/stations/hooks/useStations";
 
-/** Ô nhập số liệu đoạn đang sửa (chuỗi để xoá trắng được khi đang gõ). */
-export type SegmentDraft = { distance: string; travel: string; dwell: string };
-
-const segmentOf = (row: LineStationResponse): SegmentDraft => ({
-  distance: String(row.distanceFromPrevKm),
-  travel: String(row.travelTimeFromPrevSeconds),
-  dwell: String(row.dwellTimeSeconds),
-});
-
-/** Các field đoạn đã đổi so với dữ liệu đã lưu; `null` nếu có ô không hợp lệ. */
-function segmentPatch(
-  draft: SegmentDraft,
-  row: LineStationResponse,
-  first: boolean,
-): UpdateSegmentBody | null {
-  const body: UpdateSegmentBody = {};
-  const fields = [
-    ["dwell", "dwellTimeSeconds", true],
-    ["distance", "distanceFromPrevKm", false],
-    ["travel", "travelTimeFromPrevSeconds", true],
-  ] as const;
-  for (const [key, field, integer] of fields) {
-    if (first && key !== "dwell") continue; // ga đầu tuyến luôn là 0
-    const raw = draft[key].trim();
-    const value = Number(raw);
-    if (!raw || !(value >= 0) || (integer && !Number.isInteger(value))) return null;
-    if (value !== row[field]) body[field] = value;
-  }
-  return body;
-}
+export type { SegmentDraft } from "@/pages/lines/lines.service";
 
 export function useLines() {
   const queryClient = useQueryClient();
@@ -77,6 +53,7 @@ export function useLines() {
   const [removeTarget, setRemoveTarget] = useState<LineStationResponse | null>(null);
   const [lineForm, setLineForm] = useState<{ id?: number; draft: LineDraft } | null>(null);
   const [lineErrors, setLineErrors] = useState<LineErrors>({});
+  const [lineAttempted, setLineAttempted] = useState(false);
   const [deleteLineOpen, setDeleteLineOpen] = useState(false);
 
   const byStation = new Map(saved.map((row) => [row.station.id, row]));
@@ -86,13 +63,18 @@ export function useLines() {
   const orderDirty = !!orderDraft && orderDraft.some((id, i) => saved[i]?.station.id !== id);
   const totals = lineTotals(saved);
 
-  const segmentDraft = (row: LineStationResponse) => segments[row.station.id] ?? segmentOf(row);
+  const segmentDraft = (row: LineStationResponse) =>
+    segments[row.station.id] ?? segmentDraftOf(row);
   const dirtySegments = saved.flatMap((row, i) => {
     const draft = segments[row.station.id];
     if (!draft) return [];
     const patch = segmentPatch(draft, row, i === 0);
     return patch === null || Object.keys(patch).length ? [{ row, patch }] : [];
   });
+  /** Lỗi theo ô của một dòng đang sửa (dòng chưa sửa thì không báo gì). */
+  const segmentErrors = (row: LineStationResponse, index: number) =>
+    segments[row.station.id] ? validateSegmentDraft(segments[row.station.id], index === 0) : {};
+  const invalidSegmentCount = dirtySegments.filter((d) => d.patch === null).length;
 
   const resetDrafts = () => {
     setOrderDraft(null);
@@ -183,8 +165,8 @@ export function useLines() {
   const saveSegments = () =>
     run(async () => {
       if (lineId === undefined) return;
-      if (dirtySegments.some((d) => d.patch === null)) {
-        toast.error("Số liệu đoạn phải là số ≥ 0 (thời gian tính bằng giây, số nguyên)");
+      if (invalidSegmentCount) {
+        toast.error("Còn ô số liệu chưa hợp lệ, xem lỗi ghi dưới ô nhập");
         return;
       }
       let latest = saved;
@@ -206,14 +188,23 @@ export function useLines() {
   // ---- Tuyến ----
   const openCreateLine = () => {
     setLineErrors({});
+    setLineAttempted(false);
     setLineForm({ draft: EMPTY_LINE_DRAFT });
   };
   const openEditLine = (target: LineResponse) => {
     setLineErrors({});
+    setLineAttempted(false);
     setLineForm({ id: target.id, draft: toLineDraft(target) });
   };
+  /** Sau lần bấm lưu đầu tiên, kiểm tra lại ngay khi gõ để lỗi tự biến mất khi đã sửa đúng. */
+  const updateLineDraft = (draft: LineDraft) => {
+    setLineForm((f) => (f ? { ...f, draft } : f));
+    if (lineAttempted && lineForm) setLineErrors(validateLineDraft(draft, net.lines, lineForm.id));
+  };
+  const lineFormWarnings = lineForm ? lineWarnings(lineForm.draft, net.lines, lineForm.id) : [];
   const submitLine = async () => {
     if (!lineForm || pending) return;
+    setLineAttempted(true);
     const errors = validateLineDraft(lineForm.draft, net.lines, lineForm.id);
     setLineErrors(errors);
     if (Object.keys(errors).length) return;
@@ -298,6 +289,10 @@ export function useLines() {
     setSegment: (row: LineStationResponse, patch: Partial<SegmentDraft>) =>
       setSegments((s) => ({ ...s, [row.station.id]: { ...segmentDraft(row), ...patch } })),
     segmentsDirty: dirtySegments.length > 0,
+    segmentErrors,
+    segmentWarning: (row: LineStationResponse, index: number) =>
+      segments[row.station.id] ? segmentWarning(segments[row.station.id], index === 0) : undefined,
+    invalidSegmentCount,
     saveSegments,
     resetSegments: () => setSegments({}),
     // Ga trên tuyến
@@ -309,7 +304,9 @@ export function useLines() {
     editable,
     lineForm,
     setLineForm,
+    updateLineDraft,
     lineErrors,
+    lineFormWarnings,
     openCreateLine,
     openEditLine,
     submitLine,
